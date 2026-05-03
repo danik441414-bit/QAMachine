@@ -1,0 +1,51 @@
+﻿# Env secrets
+.env
+.env.local
+.env*.local
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# Database
+*.db
+
+# Node
+node_modules/
+.next/
+build/
+.turbo/
+
+# Artifacts (генерируются при запуске)
+QAmachine/ux_traces/
+QAmachine/auth_state.json
+QAmachine/qa_experience.json
+QAmachine/reports/
+QAmachine/generated_tests/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+tsconfig.tsbuildinfo
+
+# Desktop personal files — не должны попадать в репо
+Fooocus_win64_2-5-0/
+TT_Machine/
+Content-Machine/
+Marketing/
+qa-cli-tool/
+*.lnk
+*.pdf
+*.docx
+desktop.ini
+*.txt
+*.py
+*.jpg
+*.png
+*.url

@@ -1,0 +1,22 @@
+[Unit]
+Description=QAMachine API (FastAPI + uvicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/qamachine-saas/backend
+EnvironmentFile=/home/ubuntu/qamachine-saas/backend/.env
+ExecStart=/home/ubuntu/qamachine-saas/backend/.venv/bin/uvicorn \
+    app.main:app \
+    --host 127.0.0.1 \
+    --port 8000 \
+    --workers 2 \
+    --log-level info
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

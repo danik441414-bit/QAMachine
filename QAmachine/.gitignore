@@ -1,0 +1,28 @@
+# Environment — contains API keys, never commit
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Session artifacts (regenerated on each run)
+ux_traces/
+auth_state.json
+qa_experience.json
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db

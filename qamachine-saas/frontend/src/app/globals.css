@@ -1,0 +1,190 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── CSS Variables ─────────────────────────────────────────────────────────── */
+:root {
+  --bg:           #07090f;
+  --bg-surface:   #0e1219;
+  --bg-elevated:  #131a26;
+  --border:       #1c2536;
+  --border-subtle:#141c2b;
+  --text-primary: #e2e8f5;
+  --text-secondary:#8896b0;
+  --text-muted:   #4a5672;
+  --accent:       #5b8af7;
+  --accent-hover: #7099f8;
+}
+
+/* ── Base ──────────────────────────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html {
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: #07090f;
+  color: #e2e8f5;
+  font-family: var(--font-geist-sans, "Inter", system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #1c2536;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2a3650;
+}
+
+/* ── Selection ─────────────────────────────────────────────────────────────── */
+::selection {
+  background: rgba(91, 138, 247, 0.25);
+  color: #e2e8f5;
+}
+
+/* ── Focus ─────────────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid rgba(91, 138, 247, 0.5);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ── Utilities ─────────────────────────────────────────────────────────────── */
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  .text-balance { text-wrap: balance; }
+  .text-pretty  { text-wrap: pretty; }
+
+  .glass {
+    background: rgba(14, 18, 25, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(28, 37, 54, 0.8);
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #e2e8f5 0%, #8896b0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .accent-gradient-text {
+    background: linear-gradient(135deg, #93b5ff 0%, #7c5bf7 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Shimmer skeleton */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      #0e1219 0%,
+      #131a26 50%,
+      #0e1219 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite linear;
+    border-radius: 6px;
+  }
+}
+
+/* ── Prose / markdown output ───────────────────────────────────────────────── */
+.prose-machine {
+  color: #c8d4e8;
+  line-height: 1.75;
+}
+.prose-machine h1,
+.prose-machine h2,
+.prose-machine h3 {
+  color: #e2e8f5;
+  font-weight: 600;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+.prose-machine h1 { font-size: 1.25rem; }
+.prose-machine h2 { font-size: 1.1rem; }
+.prose-machine h3 { font-size: 1rem; }
+.prose-machine p  { margin-bottom: 0.75em; }
+.prose-machine ul,
+.prose-machine ol {
+  padding-left: 1.5em;
+  margin-bottom: 0.75em;
+}
+.prose-machine li { margin-bottom: 0.25em; }
+.prose-machine code {
+  background: #131a26;
+  border: 1px solid #1c2536;
+  border-radius: 4px;
+  padding: 0.1em 0.4em;
+  font-size: 0.85em;
+  color: #93b5ff;
+  font-family: var(--font-geist-mono, monospace);
+}
+.prose-machine pre {
+  background: #0a0e18;
+  border: 1px solid #1c2536;
+  border-radius: 8px;
+  padding: 1em;
+  overflow-x: auto;
+  margin-bottom: 1em;
+}
+.prose-machine pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #c8d4e8;
+}
+.prose-machine table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1em;
+  font-size: 0.875rem;
+}
+.prose-machine th {
+  background: #131a26;
+  border: 1px solid #1c2536;
+  padding: 0.5em 0.75em;
+  text-align: left;
+  color: #8896b0;
+  font-weight: 500;
+}
+.prose-machine td {
+  border: 1px solid #141c2b;
+  padding: 0.5em 0.75em;
+  color: #c8d4e8;
+}
+.prose-machine blockquote {
+  border-left: 3px solid #1c2536;
+  padding-left: 1em;
+  color: #8896b0;
+  margin-bottom: 0.75em;
+}
+.prose-machine hr {
+  border: none;
+  border-top: 1px solid #1c2536;
+  margin: 1.5em 0;
+}
+.prose-machine strong { color: #e2e8f5; }

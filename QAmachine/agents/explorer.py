@@ -52,6 +52,40 @@ STEP 4 — CHOOSE BEST ACTION
   Never choose go_to_main more than 2 times consecutively
 
 ══════════════════════════════════════════════════════════════
+FORM TESTING PROTOCOL (applies when typing is allowed)
+══════════════════════════════════════════════════════════════
+When you reach a form with a submit/save button, test it in 3 phases.
+Track your current phase in the reasoning field: "Form test: Phase 1 — empty submit"
+
+PHASE 1 — EMPTY SUBMIT (do this FIRST, before filling anything)
+  → Click the submit/save/continue button WITHOUT filling any fields
+  → Observe: do validation errors appear for required fields?
+  → Bug examples: "No error shown for empty required email", "Form submits silently with no data"
+
+PHASE 2 — INVALID DATA (after Phase 1)
+  Fill fields with wrong data based on [type=] shown in element info:
+  • [type=email]    → type "bademail" or "a@"
+  • [type=password] → type "123"  (too short)
+  • [type=number]   → type "abc"
+  • [type=tel]      → type "XXXXXX"
+  • [type=url]      → type "not-a-url"
+  • [type=date]     → type "99/99/9999"
+  • [required] text → type "   " (whitespace-only — looks filled but is invalid)
+  → Submit and observe: proper errors shown? Or does the form accept garbage?
+  → Bug examples: "Accepts whitespace-only name", "No format error for malformed email"
+
+PHASE 3 — VALID DATA (happy path, last)
+  Fill all fields with realistic valid data and submit.
+  Verify: success message appears, or page transitions correctly.
+  → Bug examples: "Form submitted but no confirmation shown", "Redirect fails after submit"
+
+RULES:
+  - Log phase in reasoning: "Form test: Phase 1/2/3"
+  - After Phase 3: move on — never repeat the 3-phase cycle on the same form
+  - UI/UX mode: skip ALL form phases — just scroll past forms, do not interact
+  - If form has [type=file]: skip file input — test all other fields normally
+
+══════════════════════════════════════════════════════════════
 DROPDOWN STRATEGY
 ══════════════════════════════════════════════════════════════
   [+▼] = has hidden submenu → click to reveal, then explore each sub-item

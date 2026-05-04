@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { toast } from "sonner";
-import { GoogleLogin } from "@react-oauth/google";
+import { GoogleSignInButton } from "@/components/ui/google-sign-in-button";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { authApi } from "@/lib/api";
@@ -173,12 +173,12 @@ export default function LoginPage() {
 
       {/* Google sign-in */}
       <div className="flex justify-center mb-6">
-        <GoogleLogin
-          onSuccess={async (resp) => {
-            if (!resp.credential) return;
+        <GoogleSignInButton
+          text="signin_with"
+          onSuccess={async (credential) => {
             setLoading(true);
             try {
-              const { accessToken } = await authApi.googleLogin(resp.credential);
+              const { accessToken } = await authApi.googleLogin(credential);
               localStorage.setItem("access_token", accessToken);
               router.push("/dashboard");
             } catch {
@@ -188,10 +188,6 @@ export default function LoginPage() {
             }
           }}
           onError={() => toast.error("Google sign-in failed.")}
-          theme="filled_black"
-          size="large"
-          shape="rectangular"
-          text="signin_with"
         />
       </div>
 

@@ -1,6 +1,19 @@
 "use client";
 import { useEffect, useRef } from "react";
 
+declare global {
+  interface Window {
+    google: {
+      accounts: {
+        id: {
+          initialize: (config: object) => void;
+          renderButton: (element: HTMLElement, config: object) => void;
+        };
+      };
+    };
+  }
+}
+
 const CLIENT_ID = "672004294381-hbpai74a9scdhu39cl46gmkie3c2s87m.apps.googleusercontent.com";
 const GSI_URL = "https://accounts.google.com/gsi/client";
 

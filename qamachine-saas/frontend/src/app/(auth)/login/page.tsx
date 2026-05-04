@@ -173,22 +173,7 @@ export default function LoginPage() {
 
       {/* Google sign-in */}
       <div className="flex justify-center mb-6">
-        <GoogleSignInButton
-          text="signin_with"
-          onSuccess={async (credential) => {
-            setLoading(true);
-            try {
-              const { accessToken } = await authApi.googleLogin(credential);
-              localStorage.setItem("access_token", accessToken);
-              router.push("/dashboard");
-            } catch {
-              toast.error("Google sign-in failed. Please try again.");
-            } finally {
-              setLoading(false);
-            }
-          }}
-          onError={() => toast.error("Google sign-in failed.")}
-        />
+        <GoogleSignInButton text="signin_with" />
       </div>
 
       {/* Magic link section */}

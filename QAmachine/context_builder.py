@@ -46,8 +46,28 @@ _DOM_JS = """() => {
         if (hasPopup && !isExpanded) prefix = '[+▼] ';   // has dropdown, currently closed
         else if (hasPopup && isExpanded) prefix = '[▼ OPEN] '; // dropdown currently open
 
+        // Enrich form elements so the LLM knows what data to type / select
+        let meta = '';
+        if (el.tagName === 'INPUT') {
+            const tp = el.getAttribute('type') || 'text';
+            if (tp !== 'hidden' && tp !== 'submit' && tp !== 'button') meta += ' [type=' + tp + ']';
+            const ph = (el.getAttribute('placeholder') || '').substring(0, 35).trim();
+            if (ph) meta += ' [hint: ' + ph + ']';
+            if (el.required) meta += ' [required]';
+            const mn = el.getAttribute('min'); if (mn !== null && mn !== '') meta += ' [min=' + mn + ']';
+            const mx = el.getAttribute('max'); if (mx !== null && mx !== '') meta += ' [max=' + mx + ']';
+        } else if (el.tagName === 'SELECT') {
+            const opts = Array.from(el.options).slice(0, 6).map(o => o.text.trim()).filter(Boolean).join(' / ');
+            if (opts) meta += ' [options: ' + opts + ']';
+            if (el.required) meta += ' [required]';
+        } else if (el.tagName === 'TEXTAREA') {
+            const ph = (el.getAttribute('placeholder') || '').substring(0, 35).trim();
+            if (ph) meta += ' [hint: ' + ph + ']';
+            if (el.required) meta += ' [required]';
+        }
+
         el.setAttribute('qa-id', String(c));
-        res.push({ id: String(c), tag: el.tagName.toLowerCase(), text: prefix + t });
+        res.push({ id: String(c), tag: el.tagName.toLowerCase(), text: prefix + t + meta });
         c++;
     }
 

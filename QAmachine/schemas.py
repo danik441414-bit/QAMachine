@@ -106,6 +106,9 @@ class NavAction(str, Enum):
     PRESS_KEY = "press_key"
     SCROLL_DOWN = "scroll_down"
     DONE = "done"
+    HOVER = "hover"              # reveal tooltip / hover-menu; check hover states
+    SELECT = "select"            # pick option from <select>; value_to_type = option text
+    DOUBLE_CLICK = "double_click"  # activate cell editor / expand widget
 
 
 class SessionMode(str, Enum):
@@ -238,9 +241,12 @@ class NavigationDecision(BaseModel):
     action: NavAction
     target_id: str = Field(
         default="",
-        description="qa-id digit from DOM list. Required for click/type. Empty for go_to_main/press_key/done."
+        description="qa-id digit from DOM list. Required for click/type/hover/select/double_click. Empty for go_to_main/press_key/scroll_down/done."
     )
-    value_to_type: str = Field(default="", description="Text to type if action==type")
+    value_to_type: str = Field(
+        default="",
+        description="Text to type if action==type. Option text to choose if action==select. Empty for other actions."
+    )
     suspected_issues: list[IssueHypothesis] = Field(
         default_factory=list,
         description="Suspected UI/UX issues spotted on this screen with confidence scores"

@@ -496,7 +496,9 @@ class Orchestrator:
                     decision.action = NavAction.CLICK
 
             valid_ids = {el.id for el in available}
-            if decision.action in (NavAction.CLICK, NavAction.TYPE):
+            _needs_target = (NavAction.CLICK, NavAction.TYPE, NavAction.HOVER,
+                             NavAction.SELECT, NavAction.DOUBLE_CLICK)
+            if decision.action in _needs_target:
                 if not decision.target_id or decision.target_id not in valid_ids:
                     print(f"  [OVERRIDE] Invalid target_id={decision.target_id!r}, go_to_main.")
                     decision.action = NavAction.GO_TO_MAIN
@@ -633,6 +635,24 @@ class Orchestrator:
 
             elif decision.action == NavAction.SCROLL_DOWN:
                 await page.evaluate("window.scrollBy(0, window.innerHeight)")
+
+            elif decision.action == NavAction.HOVER and decision.target_id:
+                target = page.locator(f"[qa-id='{decision.target_id}']").first
+                await target.hover(timeout=5000)
+
+            elif decision.action == NavAction.SELECT and decision.target_id:
+                target = page.locator(f"[qa-id='{decision.target_id}']").first
+                if decision.value_to_type:
+                    try:
+                        await target.select_option(label=decision.value_to_type, timeout=5000)
+                    except Exception:
+                        await target.select_option(value=decision.value_to_type, timeout=3000)
+                else:
+                    await target.select_option(index=1, timeout=3000)
+
+            elif decision.action == NavAction.DOUBLE_CLICK and decision.target_id:
+                target = page.locator(f"[qa-id='{decision.target_id}']").first
+                await target.dblclick(timeout=5000, force=True)
 
             elif decision.action == NavAction.DONE:
                 pass

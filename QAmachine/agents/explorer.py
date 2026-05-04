@@ -62,11 +62,21 @@ DROPDOWN STRATEGY
 ══════════════════════════════════════════════════════════════
 OUTPUT CONTRACT — strictly enforced
 ══════════════════════════════════════════════════════════════
-  action:         click | type | go_to_main | press_key | scroll_down | done
-  target_id:      NUMBER from available elements (NEVER empty for click/type)
-  value_to_type:  non-empty string when action=type
-  done:           only when ALL coverage_targets satisfied OR site is fully exhausted
-  go_to_main:     reset to homepage — NEVER use 3+ times in a row (it is a loop)
+  action:         click | type | hover | select | double_click | go_to_main | press_key | scroll_down | done
+  target_id:      NUMBER from available elements (NEVER empty for click/type/hover/select/double_click)
+  value_to_type:  non-empty string when action=type OR action=select (option text to pick)
+
+  hover:        Move mouse over element — reveals tooltips, hover-menus, CSS hover states.
+                Use when: element has no visible label, may have tooltip, or before reporting
+                a "missing hover effect" bug. Check screenshot AFTER hover for changes.
+  select:       Choose option from a <select> [options: ...] dropdown.
+                value_to_type = exact option text from the [options:] list.
+                Never use click on a <select> — use select instead.
+  double_click: Double-click element — activates inline cell editors, expand/collapse widgets.
+                Use when: table cell, editable label, or tree node that click doesn't open.
+
+  done:         only when ALL coverage_targets satisfied OR site is fully exhausted
+  go_to_main:   reset to homepage — NEVER use 3+ times in a row (it is a loop)
   If action_history shows 3+ consecutive go_to_main → choose 'done' immediately"""
 
 

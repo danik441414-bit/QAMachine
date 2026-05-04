@@ -498,7 +498,11 @@ async def create_card_checkout(
         )
 
     if resp.status_code not in (200, 201):
-        raise HTTPException(status_code=502, detail="Card checkout failed. Try crypto.")
+        import logging
+        logging.getLogger("billing").error(
+            "Dodo card checkout failed: status=%s body=%s", resp.status_code, resp.text
+        )
+        raise HTTPException(status_code=502, detail=f"Dodo error {resp.status_code}: {resp.text[:300]}")
 
     data = resp.json()
     url = data.get("payment_link") or data.get("checkout_url") or data.get("url")

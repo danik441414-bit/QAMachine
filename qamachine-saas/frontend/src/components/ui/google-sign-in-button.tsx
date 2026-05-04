@@ -13,7 +13,7 @@ export function GoogleSignInButton({ text = "signin_with" }: Props) {
 
     const params = new URLSearchParams({
       client_id: CLIENT_ID,
-      redirect_uri: `${window.location.origin}/auth/google/callback`,
+      redirect_uri: "https://qamachine.site/auth/google/callback",
       response_type: "id_token",
       scope: "openid email profile",
       nonce,

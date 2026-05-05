@@ -36,6 +36,7 @@ async def init_db() -> None:
         await conn.run_sync(Base.metadata.create_all)
         # Safe migrations: add new columns if they don't exist yet
         if _is_sqlite:
+            await _sqlite_add_column_if_missing(conn, "runs", "max_steps", "INTEGER NOT NULL DEFAULT 0")
             await _sqlite_add_column_if_missing(conn, "users", "tutor_credits", "INTEGER NOT NULL DEFAULT 0")
             await _sqlite_add_column_if_missing(conn, "users", "email_verified", "BOOLEAN NOT NULL DEFAULT 1")
             await _sqlite_add_column_if_missing(conn, "users", "email_verify_token", "VARCHAR(64)")
@@ -47,6 +48,7 @@ async def init_db() -> None:
             await _sqlite_add_column_if_missing(conn, "users", "magic_token_expires", "DATETIME")
         else:
             # PostgreSQL — existing rows get email_verified=TRUE so they stay active
+            await _pg_add_column_if_missing(conn, "runs", "max_steps", "INTEGER NOT NULL DEFAULT 0")
             await _pg_add_column_if_missing(conn, "users", "email_verified", "BOOLEAN NOT NULL DEFAULT TRUE")
             await _pg_add_column_if_missing(conn, "users", "email_verify_token", "VARCHAR(64)")
             await _pg_add_column_if_missing(conn, "users", "email_verify_expires", "TIMESTAMPTZ")

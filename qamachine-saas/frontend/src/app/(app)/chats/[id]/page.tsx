@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import { Zap, Loader2 } from "lucide-react";
 import { chatsApi, messagesApi, runsApi } from "@/lib/api";
-import { MessageBubble, TypingIndicator } from "@/components/chat/message-bubble";
+import { MessageBubble } from "@/components/chat/message-bubble";
 import { ChatInput } from "@/components/chat/chat-input";
 import type { Chat, Message, Run } from "@/types";
 
@@ -219,6 +219,14 @@ export default function ChatDetailPage() {
 
   const hasMessages = messages.length > 0;
 
+  // Find the currently active run for progress display
+  const activeRun = Object.values(runs).find(
+    (r) => r.status === "running" || r.status === "queued"
+  ) ?? null;
+  const progressPct = activeRun && activeRun.maxSteps > 0
+    ? Math.min(Math.round((activeRun.stepCount / activeRun.maxSteps) * 100), 99)
+    : 0;
+
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)]">
 
@@ -240,22 +248,13 @@ export default function ChatDetailPage() {
             {chat?.title ?? "Chat"}
           </h2>
           {chat?.status === "running" && (
-            <div className="flex items-center gap-0 mt-0.5">
-              <span
-                className="text-xs text-accent"
-                style={{ animation: "pulse 2s ease-in-out infinite" }}
-              >
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-xs text-accent" style={{ animation: "pulse 2s ease-in-out infinite" }}>
                 Machine is running
               </span>
-              {[0, 1, 2].map((i) => (
-                <span
-                  key={i}
-                  className="text-xs text-accent font-bold"
-                  style={{ animation: `blink 1.2s step-end infinite ${i * 0.3}s` }}
-                >
-                  .
-                </span>
-              ))}
+              {progressPct > 0 && (
+                <span className="text-xs text-accent font-semibold">— {progressPct}%</span>
+              )}
             </div>
           )}
         </div>
@@ -303,7 +302,45 @@ export default function ChatDetailPage() {
                 run={msg.runId ? runs[msg.runId] : undefined}
               />
             ))}
-            {isTyping && <TypingIndicator />}
+            {isTyping && (
+              <div className="flex items-start gap-3">
+                <div className="h-8 w-8 rounded-lg bg-bg-surface border border-border flex items-center justify-center shrink-0">
+                  <Zap className="h-4 w-4 text-accent animate-pulse" />
+                </div>
+                <div className="bg-bg-surface border border-border rounded-xl px-4 py-3 min-w-[220px]">
+                  {activeRun && activeRun.maxSteps > 0 ? (
+                    <>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-text-secondary">Testing in progress</span>
+                        <span className="text-xs text-accent font-semibold">{progressPct}%</span>
+                      </div>
+                      <div className="h-1.5 bg-bg-elevated rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-accent rounded-full transition-all duration-700 ease-out"
+                          style={{ width: `${progressPct}%` }}
+                        />
+                      </div>
+                      <div className="mt-1.5 text-xs text-text-muted">
+                        Step {activeRun.stepCount} of {activeRun.maxSteps}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-1">
+                        {[0, 1, 2].map((i) => (
+                          <div
+                            key={i}
+                            className="h-1.5 w-1.5 rounded-full bg-accent animate-bounce"
+                            style={{ animationDelay: `${i * 0.15}s` }}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-xs text-text-secondary">Initializing…</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             <div ref={bottomRef} />
           </div>
         )}

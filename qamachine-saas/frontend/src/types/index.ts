@@ -92,6 +92,7 @@ export interface Run {
   reportPath: string | null;
   errorMessage: string | null;
   stepCount: number;
+  maxSteps: number;
   issueCount: number;
   summary: string | null;
   artifacts: RunArtifact[];

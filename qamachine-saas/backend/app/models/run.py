@@ -21,6 +21,7 @@ class Run(Base):
     status:        Mapped[str]          = mapped_column(String(32), default="queued", nullable=False, index=True)
     mode:          Mapped[str | None]   = mapped_column(String(64), nullable=True)
     step_count:    Mapped[int]          = mapped_column(Integer, default=0, nullable=False)
+    max_steps:     Mapped[int]          = mapped_column(Integer, default=0, nullable=False)
     issue_count:   Mapped[int]          = mapped_column(Integer, default=0, nullable=False)
     summary:       Mapped[str | None]   = mapped_column(Text, nullable=True)
     report_path:   Mapped[str | None]   = mapped_column(String(1024), nullable=True)

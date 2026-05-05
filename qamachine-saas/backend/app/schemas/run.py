@@ -19,6 +19,7 @@ class RunOut(BaseModel):
     status:        str
     mode:          str | None
     step_count:    int
+    max_steps:     int
     issue_count:   int
     summary:       str | None
     report_path:   str | None

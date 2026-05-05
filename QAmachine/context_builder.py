@@ -156,8 +156,16 @@ async def build_page_context(
     raw_dom = await page.evaluate(_DOM_JS)
     full_dom = [DOMElement(id=el["id"], tag=el["tag"], text=el["text"]) for el in raw_dom]
 
-    # Aria snapshot
+    # Aria snapshot + scroll-below hint so LLM knows there's hidden content
     aria = await _get_aria_snapshot(page)
+    try:
+        scroll_below = int(await page.evaluate(
+            "() => Math.max(0, document.body.scrollHeight - window.innerHeight - Math.round(window.scrollY))"
+        ) or 0)
+        if scroll_below > 250:
+            aria = f"[↓ ~{scroll_below}px MORE CONTENT BELOW VIEWPORT — use SCROLL_DOWN to reveal]\n\n" + aria
+    except Exception:
+        pass
 
     # Network errors (4xx/5xx from buffer)
     network_errors: list[str] = []

@@ -224,6 +224,7 @@ class PageContext(BaseModel):
     nav_items_clicked: list[str]
     action_history: list[str]
     mission: TestMission
+    uncovered_targets: list[str] = Field(default_factory=list)
 
 
 # ── Explorer output ────────────────────────────────────────────────────────────

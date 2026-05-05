@@ -64,15 +64,18 @@ PHASE 1 — EMPTY SUBMIT (do this FIRST, before filling anything)
 
 PHASE 2 — INVALID DATA (after Phase 1)
   Fill fields with wrong data based on [type=] shown in element info:
-  • [type=email]    → type "bademail" or "a@"
+  • [type=email]    → type "bademail" or "a@b"
   • [type=password] → type "123"  (too short)
-  • [type=number]   → type "abc"
+  • [type=number]   → type "abc"  (non-numeric)
   • [type=tel]      → type "XXXXXX"
   • [type=url]      → type "not-a-url"
   • [type=date]     → type "99/99/9999"
   • [required] text → type "   " (whitespace-only — looks filled but is invalid)
-  → Submit and observe: proper errors shown? Or does the form accept garbage?
-  → Bug examples: "Accepts whitespace-only name", "No format error for malformed email"
+  • Any text field  → type "<script>alert(1)</script>"  (XSS injection check)
+  • Any text field  → type "' OR '1'='1"  (SQL injection check)
+  • Any long field  → type a 300-char string "aaaa...aaa"  (overflow/truncation check)
+  → Submit each time and observe: proper error shown? Or accepted silently?
+  → Bugs: accepts XSS/SQL without escaping, no maxlength enforced, whitespace accepted
 
 PHASE 3 — VALID DATA (happy path, last)
   Fill all fields with realistic valid data and submit.
@@ -84,6 +87,22 @@ RULES:
   - After Phase 3: move on — never repeat the 3-phase cycle on the same form
   - UI/UX mode: skip ALL form phases — just scroll past forms, do not interact
   - If form has [type=file]: skip file input — test all other fields normally
+
+══════════════════════════════════════════════════════════════
+SEARCH TESTING PROTOCOL (when a search input is detected)
+══════════════════════════════════════════════════════════════
+Triggered when: input with [hint: search] / [hint: find] / [hint: query] / text "search"
+Test in order — track in reasoning: "Search test: Phase X/5"
+
+PHASE 1 — EMPTY SEARCH: click search/submit without typing → should show message or results, NOT crash
+PHASE 2 — SHORT QUERY: type "a" → observe: autocomplete? results? or error?
+PHASE 3 — XSS PROBE: type "<script>alert(1)</script>" → must be escaped in results, NOT executed
+PHASE 4 — VALID QUERY: type a realistic term matching the site content → verify results appear
+PHASE 5 — NO RESULTS: type "xyzzy_nonexistent_99999" → verify graceful "no results" message, not crash/blank
+
+Bug examples: "Empty search crashes page", "XSS not escaped in results",
+"No 'no results' message shown", "1-char query returns error", "Search ignores input"
+UI/UX mode: only check visual layout of search input — do NOT submit searches
 
 ══════════════════════════════════════════════════════════════
 DROPDOWN STRATEGY
@@ -353,6 +372,13 @@ def decide(ctx: PageContext) -> NavigationDecision:
     creds_hint = ""
     if ctx.mission.credentials_text:
         creds_hint = f"\n🔑 LOGIN CREDENTIALS AVAILABLE: {ctx.mission.credentials_text}\n   If a login/signin form is visible → TYPE these credentials and click Submit.\n"
+    # Coverage gaps — shown only when there are unvisited targets
+    if ctx.uncovered_targets:
+        gaps = "\n".join(f"  ✗ {t}" for t in ctx.uncovered_targets)
+        coverage_note = f"\nCOVERAGE GAPS (not yet visited — prioritize these):\n{gaps}\n"
+    else:
+        coverage_note = "\nCOVERAGE: All targets appear visited — consider 'done' if confirmed.\n"
+
     dynamic_text = "\n".join([
         f"ACTION HISTORY (last 10):\n{history}",
         "",
@@ -361,7 +387,7 @@ def decide(ctx: PageContext) -> NavigationDecision:
         f"PAGE LOAD TIME: {load_info}",
         "",
         f"VISITED URLS (recent 20):\n{visited}",
-        "",
+        coverage_note,
         f"CURRENT URL: {ctx.current_url}",
         f"URL STAY COUNT: {ctx.url_stay_count}",
         stuck_note,

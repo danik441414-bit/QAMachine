@@ -96,6 +96,9 @@ class Orchestrator:
         # Cookie banner tracking
         self._cookie_banner_streak = 0      # Steps where banner was detected but not dismissed
 
+        # Broken-link dedup: URLs already reported as 404
+        self._reported_404_urls: set[str] = set()
+
         # Console / network buffers
         self._console_errors: list[str] = []
         self._network_buffer: list[dict] = []   # raw per-step, drained each step
@@ -276,6 +279,94 @@ class Orchestrator:
 
         candidates.sort(key=lambda x: -x[0])
         return [url for _, url in candidates[:5]]
+
+    # ── Issue deduplication ────────────────────────────────────────────────────
+
+    def _is_duplicate_issue(self, description: str) -> bool:
+        """Fuzzy dedup — returns True if a similar issue was already verified."""
+        from difflib import SequenceMatcher
+        d = description.lower()
+        for v in self.log.verified_issues:
+            e = v.description.lower()
+            if d == e:
+                return True
+            if SequenceMatcher(None, d, e).ratio() > 0.72:
+                return True
+        return False
+
+    # ── Coverage gap tracker ───────────────────────────────────────────────────
+
+    def _compute_uncovered_targets(self) -> list[str]:
+        """Return mission coverage_targets not yet matched by visited URLs or nav items."""
+        if not self.mission:
+            return []
+        combined = (
+            " ".join(self.tracker.visited_urls).lower() + " "
+            + " ".join(self.tracker.nav_items_clicked).lower()
+        )
+        uncovered = []
+        for target in self.mission.coverage_targets:
+            keywords = [w for w in target.lower().split() if len(w) > 3]
+            if keywords and not any(kw in combined for kw in keywords):
+                uncovered.append(target)
+        return uncovered
+
+    # ── Broken-link / 404 detector ─────────────────────────────────────────────
+
+    async def _check_broken_link(
+        self,
+        page: Page,
+        url_before: str,
+        url_after: str,
+        target_text: str,
+        step: int,
+        screenshot_path: str,
+    ) -> VerifiedIssue | None:
+        """
+        After a CLICK that changes the URL, check whether the new page is a 404
+        or generic error page. Returns a VerifiedIssue if so, else None.
+        """
+        if url_before == url_after:
+            return None
+        # Only check pages within the same domain
+        after_domain = urlparse(url_after).netloc.replace("www.", "")
+        if self.base_domain not in after_domain:
+            return None
+        # Already reported for this URL?
+        if url_after in self._reported_404_urls:
+            return None
+        try:
+            pd = await page.evaluate("""() => ({
+                title: (document.title ?? '').toLowerCase(),
+                text:  (document.body?.innerText ?? '').toLowerCase().slice(0, 400),
+            })""")
+            title = pd.get("title", "")
+            text  = pd.get("text", "")
+        except Exception:
+            return None
+
+        _404_signals = [
+            "404", "page not found", "not found", "error 404",
+            "page doesn't exist", "this page could not be found",
+            "oops! that page", "страница не найдена", "страница не существует",
+            "no page found", "404 error",
+        ]
+        if not any(s in title or s in text[:300] for s in _404_signals):
+            return None
+
+        self._reported_404_urls.add(url_after)
+        return VerifiedIssue(
+            description=f"Broken link: '{target_text[:55]}' leads to a 404/error page",
+            severity="high",
+            url=url_before,
+            step=step,
+            element_id=None,
+            evidence=(
+                f"Clicking the element navigated to {url_after} "
+                f"which returned a 404/error page. Page title: '{title[:80]}'"
+            ),
+            screenshot_path=screenshot_path,
+        )
 
     # ── Cookie banner auto-dismissal ──────────────────────────────────────────
 
@@ -545,9 +636,10 @@ class Orchestrator:
                     "dom_ms":  0,
                 })
 
-            # 4. Filter DOM
+            # 4. Filter DOM + annotate coverage gaps
             available = self.tracker.available_elements(full_dom)
             ctx.dom_elements = available
+            ctx.uncovered_targets = self._compute_uncovered_targets()
 
             # 5. Save screenshot (compressed JPEG from context_builder)
             screenshot_path = os.path.join(TRACES_DIR, f"step_{step:03d}.jpg")
@@ -660,6 +752,20 @@ class Orchestrator:
                 if (decision.page_type == PageType.AUTH or auth_url) and self.mission.credentials_text:
                     self._credentials_typed = True
 
+            # 10b. Broken-link / 404 detection after click navigation
+            if url_changed and decision.action == NavAction.CLICK and target_el:
+                broken = await self._check_broken_link(
+                    page, url_before, url_after, target_text, step, screenshot_path
+                )
+                if broken:
+                    verified_issues.append(broken)
+                    print(f"  [404] Broken link → {url_after[:70]}")
+                    try:
+                        await page.go_back(wait_until="domcontentloaded", timeout=10_000)
+                        await page.wait_for_timeout(1000)
+                    except Exception:
+                        await page.goto(self.target_url, wait_until="domcontentloaded", timeout=30_000)
+
             # 11. Record click (is_nav only if URL changed)
             if target_el:
                 self.tracker.record_click(
@@ -712,7 +818,7 @@ class Orchestrator:
         verified = []
         for r in results:
             if isinstance(r, VerifiedIssue):
-                if not any(v.description == r.description for v in self.log.verified_issues):
+                if not self._is_duplicate_issue(r.description):
                     verified.append(r)
             elif isinstance(r, Exception):
                 print(f"  Judge error: {r}")

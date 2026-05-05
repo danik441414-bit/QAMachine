@@ -93,6 +93,9 @@ class Orchestrator:
         self._login_error_streak = 0        # Consecutive steps showing login error
         self._auth_wall_streak = 0          # Consecutive steps showing auth wall
 
+        # Cookie banner tracking
+        self._cookie_banner_streak = 0      # Steps where banner was detected but not dismissed
+
         # Console / network buffers
         self._console_errors: list[str] = []
         self._network_buffer: list[dict] = []   # raw per-step, drained each step
@@ -274,6 +277,105 @@ class Orchestrator:
         candidates.sort(key=lambda x: -x[0])
         return [url for _, url in candidates[:5]]
 
+    # ── Cookie banner auto-dismissal ──────────────────────────────────────────
+
+    _COOKIE_DISMISS_JS = """() => {
+        // Phase 1: try to click known accept buttons
+        const acceptSelectors = [
+            '#onetrust-accept-btn-handler',
+            '#onetrust-pc-btn-handler',
+            '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll',
+            '#CybotCookiebotDialogBodyButtonAccept',
+            '#cookie-accept', '#accept-cookies', '#acceptCookies',
+            '#accept-all', '#acceptAll', '#btn-accept-cookies',
+            '.cc-accept', '.cc-allow', '.cc-btn.cc-allow',
+            '.cookie-accept', '.cookie-agree', '.cookie-consent-accept',
+            '[data-testid="cookie-accept"]', '[data-testid="accept-cookies"]',
+            '[aria-label="Accept cookies"]', '[aria-label="Accept all cookies"]',
+            'button[id*="cookie"][id*="accept"]',
+            'button[class*="cookie"][class*="accept"]',
+            'button[class*="cookie"][class*="allow"]',
+        ];
+        for (const sel of acceptSelectors) {
+            try {
+                const el = document.querySelector(sel);
+                if (el && el.offsetParent !== null) { el.click(); return 'dismissed:sel:' + sel; }
+            } catch(e) {}
+        }
+        // Text-based fallback — ordered most-specific → least
+        const keywords = [
+            'accept all cookies', 'accept all', 'allow all cookies', 'allow all',
+            'accept cookies', 'agree to all', 'consent to all', 'i accept all',
+            'i agree to all', 'ok, accept', 'ok, got it', 'got it', 'i accept',
+            'agree and continue', 'continue with recommended', 'accept & continue',
+            'принять все cookie', 'принять все куки', 'принять все',
+            'принять куки', 'принять cookies', 'принять',
+        ];
+        const candidates = Array.from(document.querySelectorAll(
+            'button, [role="button"], input[type="button"], input[type="submit"]'
+        ));
+        for (const kw of keywords) {
+            for (const el of candidates) {
+                if (!el.offsetParent) continue;
+                const t = (el.innerText || el.value || '').trim().toLowerCase();
+                if (t === kw || t.startsWith(kw)) { el.click(); return 'dismissed:text:' + t; }
+            }
+        }
+        // Phase 2: check if a cookie modal/wall is still blocking (couldn't dismiss)
+        const blockSelectors = [
+            '#onetrust-consent-sdk', '#CybotCookiebotDialog', '#cookieConsent',
+            '#cookie-notice', '#cookie-law-info-bar', '#cookie-bar',
+            '[id*="cookie-consent"]', '[id*="cookieBanner"]', '[id*="cookie-banner"]',
+            '[class*="cookie-modal"]', '[class*="cookie-banner"]', '[class*="cookie-wall"]',
+            '[class*="consent-modal"]', '[class*="gdpr-modal"]',
+        ];
+        for (const sel of blockSelectors) {
+            try {
+                const el = document.querySelector(sel);
+                if (el && el.offsetParent !== null &&
+                    window.getComputedStyle(el).display !== 'none' &&
+                    window.getComputedStyle(el).visibility !== 'hidden') {
+                    return 'blocked:' + sel;
+                }
+            } catch(e) {}
+        }
+        return null;  // no cookie banner detected
+    }"""
+
+    async def _dismiss_cookie_banner(self, page: Page) -> bool:
+        """
+        Try to find and click a cookie consent 'Accept' button.
+        Covers OneTrust, Cookiebot, generic banners, and text-based fallback.
+
+        Returns True if dismissed. Tracks consecutive unresolvable banners in
+        self._cookie_banner_streak and prints a warning at streak >= 4.
+        """
+        try:
+            result = await page.evaluate(self._COOKIE_DISMISS_JS)
+            if result is None:
+                # No cookie banner visible — clear streak
+                self._cookie_banner_streak = 0
+                return False
+            if result.startswith("dismissed:"):
+                label = result[len("dismissed:"):]
+                print(f"  [COOKIE] Banner dismissed ({label[:60]})")
+                await page.wait_for_timeout(800)
+                self._cookie_banner_streak = 0
+                return True
+            if result.startswith("blocked:"):
+                # Banner detected but no accept button found
+                self._cookie_banner_streak += 1
+                if self._cookie_banner_streak >= 4:
+                    print(
+                        f"  [COOKIE] Banner persists for {self._cookie_banner_streak} steps "
+                        f"({result[8:50]}) — no dismiss button found. "
+                        "Testing continues but interactions may be blocked."
+                    )
+                return False
+        except Exception:
+            pass
+        return False
+
     # ── Hard blocker detection ─────────────────────────────────────────────────
 
     async def _detect_hard_blocker(self, page: Page, step: int) -> bool:
@@ -397,7 +499,10 @@ class Orchestrator:
                 pass
             await page.wait_for_timeout(500)
 
-            # 1. Hard blocker check (CAPTCHA, auth wall, bot protection, site error)
+            # 1a. Cookie banner auto-dismiss (before blocker check so it doesn't interfere)
+            await self._dismiss_cookie_banner(page)
+
+            # 1b. Hard blocker check (CAPTCHA, auth wall, bot protection, site error)
             if await self._detect_hard_blocker(page, step):
                 print(f"\n  [BLOCKED] {self.failure_reason[:120]}")
                 break

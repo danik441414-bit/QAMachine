@@ -499,6 +499,9 @@ class Orchestrator:
                 pass
             await page.wait_for_timeout(500)
 
+            # Progress signal — parsed by SaaS engine.py for real-time UI updates
+            print(f"QAMACHINE_PROGRESS:{step}/{self.max_steps}", flush=True)
+
             # 1a. Cookie banner auto-dismiss (before blocker check so it doesn't interfere)
             await self._dismiss_cookie_banner(page)
 

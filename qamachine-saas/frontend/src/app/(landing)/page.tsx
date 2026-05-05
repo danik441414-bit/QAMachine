@@ -135,10 +135,10 @@ export default function LandingPage() {
                   <f.icon className="h-4.5 w-4.5 text-text-muted group-hover:text-accent
                                      transition-colors" />
                 </div>
-                <h3 className="text-sm font-semibold text-text-primary mb-1.5">
+                <h3 className="text-[0.9375rem] font-semibold text-text-primary mb-1.5">
                   {f.title}
                 </h3>
-                <p className="text-sm text-text-secondary leading-relaxed">
+                <p className="text-xs text-text-secondary leading-relaxed">
                   {f.description}
                 </p>
               </div>
@@ -204,14 +204,19 @@ export default function LandingPage() {
                 className={`rounded-xl border p-6 flex flex-col relative
                   ${plan.highlighted
                     ? "bg-bg-surface border-accent/40 shadow-glow"
+                    : plan.premium
+                    ? "bg-bg-surface border-border-focus/60"
                     : "bg-bg-surface border-border"
                   }`}
               >
-                {plan.highlighted && (
+                {plan.badge && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="px-3 py-1 rounded-full bg-accent text-white
-                                     text-xs font-medium shadow-glow-sm">
-                      Most popular
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium shadow-glow-sm
+                      ${plan.highlighted
+                        ? "bg-accent text-white"
+                        : "bg-bg-elevated border border-border-focus text-text-secondary"
+                      }`}>
+                      {plan.badge}
                     </span>
                   </div>
                 )}
@@ -249,6 +254,8 @@ export default function LandingPage() {
                     text-sm font-medium transition-all
                     ${plan.highlighted
                       ? "bg-accent hover:bg-accent-hover text-white shadow-glow-sm"
+                      : plan.premium
+                      ? "bg-bg-elevated hover:bg-bg-elevated/70 text-text-primary border border-border-focus/60 hover:border-border-focus"
                       : "bg-bg-elevated hover:bg-border text-text-primary border border-border"
                     }`}
                 >
@@ -355,6 +362,8 @@ const PLANS = [
     price: 0,
     description: "For personal projects",
     highlighted: false,
+    premium: false,
+    badge: "",
     cta: "Get started free",
     features: [
       "3 QA runs per month",
@@ -368,6 +377,8 @@ const PLANS = [
     price: 29,
     description: "For solo professionals",
     highlighted: true,
+    premium: false,
+    badge: "Most popular",
     cta: "Start Pro trial",
     features: [
       "50 QA runs per month",
@@ -382,6 +393,8 @@ const PLANS = [
     price: 79,
     description: "For growing teams",
     highlighted: false,
+    premium: true,
+    badge: "Best value",
     cta: "Start Team trial",
     features: [
       "200 QA runs per month",

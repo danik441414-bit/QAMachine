@@ -141,6 +141,7 @@ def write_docx(
     user_task: str,
     verified_issues: list["VerifiedIssue"],
     steps: list["StepLog"],
+    ux_analysis: str = "",
 ) -> str:
     """
     Generate a .docx report alongside the existing .md report.
@@ -212,6 +213,29 @@ def write_docx(
             _add_sev_heading(doc, sev, len(issues))
             for i, issue in enumerate(issues, 1):
                 _add_issue(doc, i, issue)
+
+    # ── UX Analysis ───────────────────────────────────────────────────────────
+    if ux_analysis and not ux_analysis.startswith("_"):
+        doc.add_page_break()
+        doc.add_heading("UX Analysis", level=1)
+        for line in ux_analysis.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if stripped.startswith("### "):
+                doc.add_heading(stripped[4:], level=3)
+            elif stripped.startswith("## "):
+                doc.add_heading(stripped[3:], level=2)
+            elif stripped.startswith("# "):
+                doc.add_heading(stripped[2:], level=1)
+            elif stripped.startswith("- ") or stripped.startswith("* "):
+                p = doc.add_paragraph(style="List Bullet")
+                p.add_run(stripped[2:])
+            elif stripped.startswith("**") and stripped.endswith("**"):
+                p = doc.add_paragraph()
+                p.add_run(stripped[2:-2]).bold = True
+            else:
+                doc.add_paragraph(stripped)
 
     # ── Action Log (compact) ──────────────────────────────────────────────────
     doc.add_page_break()

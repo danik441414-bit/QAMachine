@@ -49,10 +49,12 @@ def _ux_section(journey_screenshots: list[str], target_url: str) -> str:
             continue
         try:
             with open(path, "rb") as f:
-                b64 = base64.b64encode(f.read()).decode("utf-8")
+                raw = f.read()
+            b64 = base64.b64encode(raw).decode("utf-8")
+            media = "image/jpeg" if path.lower().endswith((".jpg", ".jpeg")) else "image/png"
             content.append({
-                "type": "image_url",
-                "image_url": {"url": f"data:image/png;base64,{b64}", "detail": "low"},
+                "type": "image",
+                "source": {"type": "base64", "media_type": media, "data": b64},
             })
         except Exception:
             continue
@@ -61,7 +63,7 @@ def _ux_section(journey_screenshots: list[str], target_url: str) -> str:
     try:
         system = f"{_UX_SYSTEM}\n\nSite: {target_url}"
         resp = _llm.invoke([SystemMessage(content=system), HumanMessage(content=content)])
-        return resp.content
+        return str(resp.content)
     except Exception as e:
         return f"_UX audit failed: {e}_"
 
@@ -259,7 +261,7 @@ def generate(
     api_summary: str = "",
     perf_metrics: list[dict] | None = None,
     load_test_results: list[dict] | None = None,
-) -> str:
+) -> tuple[str, str]:
     ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     mode_label = _MODE_LABEL.get(mission.session_mode.value, mission.session_mode.value)
     scope_note = f" | **Scope:** {mission.test_scope}" if mission.test_scope else ""
@@ -335,9 +337,11 @@ def generate(
         ]
 
     # ── UX section (skip for modes where it doesn't add value) ────────────────
+    ux_analysis_text = ""
     if mode in (SessionMode.UI_UX, SessionMode.FUNCTIONAL, SessionMode.ALL_FLOWS,
                 SessionMode.SPECIFIC_FLOW, SessionMode.REGRESSION, SessionMode.MOBILE):
-        lines += ["## UX Analysis", "", _ux_section(journey_screenshots, target_url), "", "---", ""]
+        ux_analysis_text = _ux_section(journey_screenshots, target_url)
+        lines += ["## UX Analysis", "", ux_analysis_text, "", "---", ""]
 
     # ── Action Log ────────────────────────────────────────────────────────────
     lines += ["## Action Log", ""]
@@ -351,4 +355,4 @@ def generate(
             f"{bug_note}\n"
         )
 
-    return "\n".join(lines)
+    return "\n".join(lines), ux_analysis_text

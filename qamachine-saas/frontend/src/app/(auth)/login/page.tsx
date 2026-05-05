@@ -137,7 +137,8 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setShowPass((v) => !v)}
-              className="text-text-muted hover:text-text-secondary transition-colors"
+              className="text-text-secondary hover:text-text-primary transition-colors rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent/60"
+              aria-label={showPass ? "Hide password" : "Show password"}
               tabIndex={-1}
             >
               {showPass
@@ -181,8 +182,11 @@ export default function LoginPage() {
 
       {/* Magic link section */}
       <div className="mt-4 rounded-xl border border-border bg-bg-surface p-4">
-        <p className="text-xs font-medium text-text-muted mb-3 text-center">
-          No password? Sign in with email link
+        <p className="text-xs font-semibold text-text-secondary mb-1 text-center">
+          Passwordless sign-in
+        </p>
+        <p className="text-xs text-text-muted mb-3 text-center">
+          Enter your email to receive a one-time login link
         </p>
         {magicSent ? (
           <div className="text-center py-2 space-y-1">
@@ -206,7 +210,8 @@ export default function LoginPage() {
               onChange={(e) => setMagicEmail(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleMagicLink()}
               placeholder="your@email.com"
-              className="flex-1 h-9 rounded-lg border border-border bg-bg-elevated px-3
+              aria-label="Email for passwordless sign-in"
+              className="flex-1 h-9 rounded-lg border border-border-focus/40 bg-bg-elevated px-3
                          text-sm text-text-primary placeholder:text-text-muted
                          focus:outline-none focus:border-accent transition-colors"
             />
@@ -214,8 +219,10 @@ export default function LoginPage() {
               type="button"
               onClick={handleMagicLink}
               disabled={!magicEmail.trim() || magicLoading}
+              title={!magicEmail.trim() ? "Type your email above first" : undefined}
               className="h-9 px-4 rounded-lg bg-accent text-white text-sm font-medium
-                         hover:bg-accent/90 disabled:opacity-40 transition-colors shrink-0"
+                         hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed
+                         transition-colors shrink-0"
             >
               {magicLoading ? "Sending…" : "Send link"}
             </button>

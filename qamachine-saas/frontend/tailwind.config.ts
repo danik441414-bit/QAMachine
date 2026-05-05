@@ -25,8 +25,8 @@ const config: Config = {
         text: {
           primary: "#e2e8f5",
           secondary: "#8896b0",
-          muted: "#4a5672",
-          placeholder: "#3a4760",
+          muted: "#607090",
+          placeholder: "#4d607e",
         },
         // ── Accent (cold blue) ────────────────────────────────────────
         accent: {

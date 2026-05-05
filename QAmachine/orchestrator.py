@@ -897,7 +897,7 @@ class Orchestrator:
         else:
             api_results_for_report = None
 
-        content = reporter.generate(
+        content, ux_analysis = reporter.generate(
             mission=self.mission,
             target_url=self.target_url,
             user_task=self.user_task,
@@ -929,6 +929,7 @@ class Orchestrator:
                 user_task=self.user_task,
                 verified_issues=self.log.verified_issues,
                 steps=self.log.steps,
+                ux_analysis=ux_analysis,
             )
             print(f"Word report:  {docx_path}")
         except Exception as e:

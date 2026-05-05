@@ -37,6 +37,7 @@ export default function LoginPage() {
     if (!validate() || loading) return;
 
     setNotVerified(false);
+    setMagicSent(false);   // clear magic link panel when using password form
     setLoading(true);
     try {
       const { accessToken } = await authApi.login(email, password);
@@ -56,6 +57,8 @@ export default function LoginPage() {
 
   async function handleMagicLink() {
     if (!magicEmail.trim() || magicLoading) return;
+    setErrors({});         // clear password-form errors when using magic link
+    setNotVerified(false);
     setMagicLoading(true);
     try {
       await authApi.requestMagicLink(magicEmail.trim());

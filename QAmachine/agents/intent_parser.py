@@ -22,10 +22,13 @@ Your job: read the user's task and classify it into exactly ONE intent, then ext
 INTENT DETECTION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-1. "browser_test"   — standard QA session (UI/UX, functional, regression, network, API, perf)
+1. "browser_test"   — standard QA session (UI/UX, functional, regression, network, API, perf, accessibility)
    Triggers: проверь, протестируй, сделай регрессию, проверь функциональность,
              check, test, verify, audit, regression, ux audit, проверь сеть,
-             проверь api, проверь производительность, network check, api test
+             проверь api, проверь производительность, network check, api test,
+             accessibility, доступность, wcag, aria, a11y, screen reader,
+             accessible, color contrast, keyboard navigation, проверь доступность,
+             wcag аудит, accessibility audit, a11y audit
    NOT mobile-specific. NOT doc generation. NOT automation.
 
 2. "mobile_test"    — testing ON A MOBILE DEVICE / mobile viewport

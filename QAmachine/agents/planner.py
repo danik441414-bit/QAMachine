@@ -86,6 +86,12 @@ Pick exactly one mode:
   keywords: describes ONE specific journey: "проверь как...", "проверь флоу...",
             "test the flow...", "when user...", "сценарий когда", step-by-step
 
+• "accessibility"
+  keywords: accessibility, доступность, wcag, aria, a11y, screen reader,
+            accessible, color contrast, keyboard navigation, проверь доступность,
+            wcag аудит, accessibility audit, a11y audit, доступен для всех,
+            проверь aria, проверь контраст, доступность интерфейса
+
 • "functional" — default if nothing above matches
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -164,6 +170,20 @@ allow_typing: true
 user_flows: []
 changed_areas: [] (for mobile+regression: extract changed areas from task)
 
+── accessibility ─────────────────────────────
+coverage_targets: page types and key UI components to audit:
+  homepage, auth forms (login/signup), navigation, main content pages,
+  interactive widgets (modals, dropdowns, carousels), forms, error states.
+  Narrow to test_scope if set.
+strategy_notes: "Navigate to each key page type and interact with major UI zones.
+  axe-core automatically audits each page — your job is to REACH as many distinct
+  page states as possible: open modals, expand accordions, fill forms.
+  Each unique page state gets a full WCAG 2.1 AA scan.
+  Focus on breadth of coverage — visit as many unique URLs and states as possible."
+allow_typing: true (needed to reach authenticated pages and form states)
+user_flows: []
+changed_areas: []
+
 ── specific_flow ─────────────────────────────
 coverage_targets: [the flow name from the task]
 strategy_notes: "Execute the flow steps in strict order. Report any step failure.
@@ -204,6 +224,7 @@ Within that ceiling, pick the RIGHT budget for the scope and mode:
     specific_flow:    15
     all_flows:        30
     mobile:           20
+    accessibility:    15
 
   Scope is MEDIUM (2-3 sections, a feature group):
     ui_ux:            25
@@ -215,6 +236,7 @@ Within that ceiling, pick the RIGHT budget for the scope and mode:
     specific_flow:    20
     all_flows:        45
     mobile:           25
+    accessibility:    25
 
   Scope is FULL SITE (no restriction):
     ui_ux:            35
@@ -226,6 +248,7 @@ Within that ceiling, pick the RIGHT budget for the scope and mode:
     specific_flow:    20
     all_flows:        70
     mobile:           35
+    accessibility:    35
 
   Never exceed the step_budget ceiling provided by the caller.
   If step_budget = 0 (not provided): use the values above freely.

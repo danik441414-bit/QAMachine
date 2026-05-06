@@ -121,6 +121,7 @@ class SessionMode(str, Enum):
     API = "api"                             # Collect + test API endpoints
     LOAD_PERFORMANCE = "load_performance"   # Page load times, slow resources
     MOBILE = "mobile"                       # Mobile device emulation + mobile-specific checks
+    ACCESSIBILITY = "accessibility"         # WCAG 2.1 AA audit via axe-core injection
 
 
 # ── Planner output ─────────────────────────────────────────────────────────────

@@ -99,6 +99,10 @@ class Orchestrator:
         # Broken-link dedup: URLs already reported as 404
         self._reported_404_urls: set[str] = set()
 
+        # Accessibility: dedup by axe rule id + URL to avoid repeating same violation
+        self._reported_axe_ids: set[str] = set()
+        self._axe_loaded_urls: set[str] = set()  # pages where axe was already injected
+
         # Console / network buffers
         self._console_errors: list[str] = []
         self._network_buffer: list[dict] = []   # raw per-step, drained each step
@@ -367,6 +371,79 @@ class Orchestrator:
             ),
             screenshot_path=screenshot_path,
         )
+
+    # ── Accessibility audit (axe-core) ────────────────────────────────────────
+
+    _AXE_CDN = "https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.9.1/axe.min.js"
+
+    _AXE_RUN_JS = """async () => {
+        try {
+            const results = await axe.run({
+                runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'best-practice'] },
+                resultTypes: ['violations'],
+            });
+            return results.violations.map(v => ({
+                id:          v.id,
+                impact:      v.impact,
+                help:        v.help,
+                description: v.description,
+                helpUrl:     v.helpUrl,
+                nodes: v.nodes.slice(0, 2).map(n => ({
+                    html:           (n.html || '').substring(0, 200),
+                    failureSummary: (n.failureSummary || '').substring(0, 200),
+                })),
+            }));
+        } catch (e) { return []; }
+    }"""
+
+    _AXE_IMPACT = {"critical": "critical", "serious": "high", "moderate": "medium", "minor": "low"}
+
+    async def _run_axe_audit(self, page: Page, step: int, screenshot_path: str) -> list[VerifiedIssue]:
+        """
+        Inject axe-core (CDN) and run WCAG 2.1 AA audit on the current page.
+        Returns a VerifiedIssue list — axe violations are pre-verified, no judge needed.
+        Deduplicates by rule_id+URL across the whole session.
+        """
+        try:
+            already_loaded = await page.evaluate("typeof axe !== 'undefined'")
+            if not already_loaded:
+                await page.add_script_tag(url=self._AXE_CDN)
+                await page.wait_for_timeout(600)
+
+            violations: list[dict] = await page.evaluate(self._AXE_RUN_JS) or []
+        except Exception as e:
+            log.warning("[axe] Audit failed on %s: %s", page.url, e)
+            return []
+
+        issues: list[VerifiedIssue] = []
+        for v in violations:
+            rule_id = v.get("id", "unknown")
+            dedup_key = f"{rule_id}:{page.url}"
+            if dedup_key in self._reported_axe_ids:
+                continue
+            self._reported_axe_ids.add(dedup_key)
+
+            severity = self._AXE_IMPACT.get(v.get("impact", "minor"), "low")
+            node_summaries = "; ".join(
+                n.get("failureSummary", "")
+                for n in v.get("nodes", [])
+                if n.get("failureSummary")
+            )
+            evidence = f"{v.get('help', '')}. {node_summaries}".strip(". ")
+            desc = f"[WCAG] {v.get('help', v.get('description', rule_id))} (axe: {rule_id})"
+
+            issues.append(VerifiedIssue(
+                description=desc,
+                severity=severity,
+                url=page.url,
+                step=step,
+                evidence=evidence[:500],
+                screenshot_path=screenshot_path,
+            ))
+
+        if issues:
+            print(f"  [AXE] {len(issues)} new violation(s) on {page.url[:60]}")
+        return issues
 
     # ── Cookie banner auto-dismissal ──────────────────────────────────────────
 
@@ -645,6 +722,13 @@ class Orchestrator:
             screenshot_path = os.path.join(TRACES_DIR, f"step_{step:03d}.jpg")
             with open(screenshot_path, "wb") as f:
                 f.write(base64.b64decode(ctx.screenshot_b64))
+
+            # 5.5. Axe-core accessibility audit (ACCESSIBILITY mode only)
+            if self.mission.session_mode == SessionMode.ACCESSIBILITY:
+                axe_issues = await self._run_axe_audit(page, step, screenshot_path)
+                for issue in axe_issues:
+                    if not self._is_duplicate_issue(issue.description):
+                        self.log.add_verified_issue(issue)
 
             # 6. Explorer decision (3 retries)
             decision: NavigationDecision | None = None

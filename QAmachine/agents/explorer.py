@@ -293,6 +293,29 @@ Use 'done' when the full flow (+ edge case) is complete.
             check_type = "ui_ux"
         return mobile_mode_rules(device_name, check_type)
 
+    if mode == SessionMode.ACCESSIBILITY:
+        return """
+━━ MODE: ACCESSIBILITY AUDIT (WCAG 2.1 AA) ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+axe-core is running automatically on every page — it handles the WCAG checking.
+YOUR JOB: navigate to reach as many DISTINCT page states as possible.
+
+✅ Navigate to:
+   - Every unique page type (homepage, login, signup, dashboard, forms, modals)
+   - Open accordions, expand menus, trigger dropdowns
+   - Fill required form fields to reach next step / submit state
+   - Open any dialogs, tooltips, or dynamic overlays
+
+🎯 Prioritise STATES, not content: login page (empty) → (with errors) → (filled) counts as 3 states.
+   Modal closed → modal open is a new state — trigger it.
+
+❌ DO NOT report visual issues as suspected_issues — axe handles that automatically.
+   Only report issues that axe CANNOT detect:
+   - Focus trap broken in modal (keyboard user gets stuck)
+   - Skip navigation link missing
+   - Carousel/slider unusable without mouse
+   - Custom widget ignores keyboard entirely
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"""
+
     if mode == SessionMode.ALL_FLOWS:
         flows_str = "\n".join(f"  {f}" for f in flows) if flows else "  (discover from site structure)"
         return f"""

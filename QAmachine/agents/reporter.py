@@ -320,6 +320,34 @@ def generate(
     # ── Mode-specific sections ─────────────────────────────────────────────────
     mode = mission.session_mode
 
+    if mode == SessionMode.ACCESSIBILITY:
+        wcag_issues = [v for v in verified_issues if "[WCAG]" in v.description]
+        other_issues = [v for v in verified_issues if "[WCAG]" not in v.description]
+        impact_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+        for v in wcag_issues:
+            impact_counts[v.severity] = impact_counts.get(v.severity, 0) + 1
+        a11y_lines = [
+            "### Accessibility Summary",
+            "",
+            f"- **Total WCAG violations:** {len(wcag_issues)}",
+            f"- Critical: {impact_counts['critical']} | High: {impact_counts['high']} | "
+            f"Medium: {impact_counts['medium']} | Low: {impact_counts['low']}",
+            f"- **Pages audited:** {len(set(v.url for v in wcag_issues))}",
+            f"- **Standard:** WCAG 2.1 AA (axe-core automated scan)",
+            "",
+            "All violations were automatically detected by axe-core and are confirmed defects,",
+            "not hypotheses. Fix critical and high issues first — they block assistive technology users.",
+            "",
+        ]
+        if other_issues:
+            a11y_lines += [
+                "### Additional Manual Findings",
+                "",
+                *(f"- **[{v.severity.upper()}]** {v.description}" for v in other_issues),
+                "",
+            ]
+        lines += ["## Accessibility Audit (WCAG 2.1 AA)", ""] + a11y_lines + ["---", ""]
+
     if mode == SessionMode.MOBILE:
         lines += ["## Mobile Test Summary", "", _mobile_section(mission, verified_issues), "", "---", ""]
 
@@ -339,7 +367,8 @@ def generate(
     # ── UX section (skip for modes where it doesn't add value) ────────────────
     ux_analysis_text = ""
     if mode in (SessionMode.UI_UX, SessionMode.FUNCTIONAL, SessionMode.ALL_FLOWS,
-                SessionMode.SPECIFIC_FLOW, SessionMode.REGRESSION, SessionMode.MOBILE):
+                SessionMode.SPECIFIC_FLOW, SessionMode.REGRESSION, SessionMode.MOBILE,
+                SessionMode.ACCESSIBILITY):
         ux_analysis_text = _ux_section(journey_screenshots, target_url)
         lines += ["## UX Analysis", "", ux_analysis_text, "", "---", ""]
 

@@ -282,15 +282,9 @@ export default function LandingPage() {
             © {new Date().getFullYear()} QAMachine. AI-powered QA for modern teams.
           </p>
           <div className="flex items-center gap-5">
-            {["Privacy", "Terms", "Docs"].map((item) => (
-              <a
-                key={item}
-                href="#"
-                className="text-xs text-text-muted hover:text-text-secondary transition-colors"
-              >
-                {item}
-              </a>
-            ))}
+            <Link href="/privacy" className="text-xs text-text-muted hover:text-text-secondary transition-colors">Privacy</Link>
+            <Link href="/terms" className="text-xs text-text-muted hover:text-text-secondary transition-colors">Terms</Link>
+            <Link href="/refund" className="text-xs text-text-muted hover:text-text-secondary transition-colors">Refund</Link>
           </div>
         </div>
       </footer>

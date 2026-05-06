@@ -33,6 +33,16 @@ class AutomationTestType(str, Enum):
     MOBILE      = "mobile"
 
 
+# ── Multi-role config ─────────────────────────────────────────────────────────
+
+class RoleConfig(BaseModel):
+    name: str = Field(description="Role label, e.g. 'admin', 'user', 'guest'")
+    credentials_text: str = Field(
+        default="",
+        description="Login credentials for this role, e.g. 'email: admin@site.com, password: pass'"
+    )
+
+
 # ── Mobile emulation config ────────────────────────────────────────────────────
 
 class MobileConfig(BaseModel):
@@ -204,6 +214,14 @@ class TestMission(BaseModel):
             "Orchestrator uses this to configure the Playwright browser context."
         )
     )
+    roles: list[RoleConfig] = Field(
+        default_factory=list,
+        description=(
+            "Multi-role testing: list of roles to test sequentially. "
+            "Each role gets a fresh browser context. "
+            "Empty = single session using credentials_text (existing behaviour)."
+        )
+    )
 
 
 # ── Per-step context ───────────────────────────────────────────────────────────
@@ -271,6 +289,7 @@ class VerifiedIssue(BaseModel):
     element_id: Optional[str] = None
     evidence: str = Field(description="Quote from DOM/aria/console confirming the bug")
     screenshot_path: str = ""
+    role: str = Field(default="", description="Role label when found during multi-role testing")
 
 
 # ── Step log ───────────────────────────────────────────────────────────────────

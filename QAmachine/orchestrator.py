@@ -15,7 +15,7 @@ from playwright.async_api import async_playwright, Page, Browser, BrowserContext
 
 from schemas import (
     TestMode, TestMission, PageContext, NavigationDecision,
-    NavAction, StepLog, VerifiedIssue, SessionMode, PageType,
+    NavAction, StepLog, VerifiedIssue, SessionMode, PageType, RoleConfig,
 )
 from memory import CoverageTracker, SemanticLog
 from context_builder import build_page_context
@@ -112,6 +112,9 @@ class Orchestrator:
         self._auth_state_saved = False   # True once storage_state was saved this session
         self._auth_state_loaded = False  # True if we started from a saved state
 
+        # Multi-role: current role label (empty = single-role session)
+        self.current_role: str = ""
+
     # ── Auth state persistence ─────────────────────────────────────────────────
 
     def _auth_state_path(self) -> str | None:
@@ -172,54 +175,81 @@ class Orchestrator:
         async with async_playwright() as p:
             browser: Browser = await p.chromium.launch(headless=self.headless)
 
-            mc = self.mission.mobile_config if self.mission else None
+            # Build role list: multi-role if defined, else single synthetic role
+            roles = self.mission.roles if self.mission.roles else [
+                RoleConfig(name="", credentials_text=self.mission.credentials_text)
+            ]
+            if len(roles) > 1:
+                print(f"Roles  : {', '.join(r.name for r in roles)}")
 
-            # Load saved auth state if credentials provided and a state file exists
-            saved_state = self._auth_state_path()
-            use_saved   = bool(saved_state and os.path.exists(saved_state))
-            if use_saved:
-                self._auth_state_loaded = True
-                print(f"Auth   : Loading saved session from {saved_state}")
+            for role in roles:
+                self.current_role = role.name
+                # Override active credentials for this role
+                self.mission.credentials_text = role.credentials_text
 
-            context: BrowserContext
-            base_ctx_kwargs = {"storage_state": saved_state} if use_saved else {}
-            if mc:
-                context = await browser.new_context(
-                    viewport={"width": mc.viewport_width, "height": mc.viewport_height},
-                    user_agent=mc.user_agent or None,
-                    is_mobile=mc.is_mobile,
-                    has_touch=mc.has_touch,
-                    device_scale_factor=mc.device_scale_factor,
-                    **base_ctx_kwargs,
-                )
-                print(f"Device : {mc.device_name} ({mc.viewport_width}x{mc.viewport_height})")
-            else:
-                context = await browser.new_context(
-                    viewport={"width": 1280, "height": 720},
-                    **base_ctx_kwargs,
-                )
+                # Reset per-role tracking state
+                self._credentials_typed   = False
+                self._login_error_streak  = 0
+                self._auth_wall_streak    = 0
+                self._auth_state_saved    = False
+                self._auth_state_loaded   = False
+                self._go_to_main_streak   = 0
+                self._no_elements_streak  = 0
 
-            page: Page = await context.new_page()
+                if role.name:
+                    print(f"\n{'='*40}")
+                    print(f"  ROLE: {role.name.upper()}")
+                    print(f"{'='*40}")
 
-            # Listeners
-            page.on("console",   self._on_console)
-            page.on("pageerror", lambda err: self._console_errors.append(str(err)))
-            page.on("response",  self._on_response)   # network capture
+                mc = self.mission.mobile_config if self.mission else None
 
-            try:
-                print(f"Navigating to {self.target_url}...")
-                await page.goto(self.target_url, wait_until="domcontentloaded", timeout=60_000)
-                await self._main_loop(page)
-            except KeyboardInterrupt:
-                print("\nSession interrupted.")
-            except Exception as e:
-                print(f"\nFatal session error: {e}")
-                traceback.print_exc()
-            finally:
-                # Save auth state if login happened successfully this session
-                if not self._auth_state_loaded:
-                    await self._save_auth_state(context)
-                await browser.close()
+                # Load saved auth state if credentials provided and a state file exists
+                saved_state = self._auth_state_path()
+                use_saved   = bool(saved_state and os.path.exists(saved_state))
+                if use_saved:
+                    self._auth_state_loaded = True
+                    print(f"Auth   : Loading saved session from {saved_state}")
+
+                base_ctx_kwargs: dict = {"storage_state": saved_state} if use_saved else {}
+                if mc:
+                    context = await browser.new_context(
+                        viewport={"width": mc.viewport_width, "height": mc.viewport_height},
+                        user_agent=mc.user_agent or None,
+                        is_mobile=mc.is_mobile,
+                        has_touch=mc.has_touch,
+                        device_scale_factor=mc.device_scale_factor,
+                        **base_ctx_kwargs,
+                    )
+                    if role == roles[0]:
+                        print(f"Device : {mc.device_name} ({mc.viewport_width}x{mc.viewport_height})")
+                else:
+                    context = await browser.new_context(
+                        viewport={"width": 1280, "height": 720},
+                        **base_ctx_kwargs,
+                    )
+
+                page: Page = await context.new_page()
+                page.on("console",   self._on_console)
+                page.on("pageerror", lambda err: self._console_errors.append(str(err)))
+                page.on("response",  self._on_response)
+
+                try:
+                    print(f"Navigating to {self.target_url}...")
+                    await page.goto(self.target_url, wait_until="domcontentloaded", timeout=60_000)
+                    await self._main_loop(page)
+                except KeyboardInterrupt:
+                    print("\nSession interrupted.")
+                    await context.close()
+                    break
+                except Exception as e:
+                    print(f"\nFatal session error: {e}")
+                    traceback.print_exc()
+                finally:
+                    if not self._auth_state_loaded:
+                        await self._save_auth_state(context)
+                    await context.close()
+
+            await browser.close()
 
         # Post-session: API testing phase
         if self.mission.session_mode == SessionMode.API and self.log.api_endpoints:
@@ -487,6 +517,7 @@ class Orchestrator:
                 step=step,
                 evidence=evidence[:500],
                 screenshot_path=screenshot_path,
+                role=self.current_role,
             ))
 
         if issues:
@@ -952,6 +983,7 @@ class Orchestrator:
         for r in results:
             if isinstance(r, VerifiedIssue):
                 if not self._is_duplicate_issue(r.description):
+                    r.role = self.current_role
                     verified.append(r)
             elif isinstance(r, Exception):
                 print(f"  Judge error: {r}")

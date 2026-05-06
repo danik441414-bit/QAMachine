@@ -304,8 +304,9 @@ def generate(
             emoji = _SEVERITY_EMOJI[sev]
             lines += [f"### {emoji} {sev.upper()} ({len(issues)})", ""]
             for i, issue in enumerate(issues, 1):
+                role_badge = f" `[{issue.role.upper()}]`" if getattr(issue, "role", "") else ""
                 lines += [
-                    f"**{i}. {issue.description}**",
+                    f"**{i}.{role_badge} {issue.description}**",
                     f"- **URL:** `{issue.url}`",
                     f"- **Step:** {issue.step}",
                     f"- **Element:** `{issue.element_id or 'N/A'}`",
@@ -314,6 +315,23 @@ def generate(
                 if issue.screenshot_path and os.path.exists(issue.screenshot_path):
                     lines.append(f"- **Screenshot:** `{issue.screenshot_path}`")
                 lines.append("")
+
+    # ── Multi-role summary (only when roles present) ───────────────────────────
+    roles_present = list(dict.fromkeys(
+        i.role for i in verified_issues if getattr(i, "role", "")
+    ))
+    if roles_present:
+        lines += ["## Issues by Role", ""]
+        lines.append("| Role | Critical | High | Medium | Low | Total |")
+        lines.append("|---|---|---|---|---|---|")
+        for role in roles_present:
+            ri = [i for i in verified_issues if getattr(i, "role", "") == role]
+            c = sum(1 for i in ri if i.severity == "critical")
+            h = sum(1 for i in ri if i.severity == "high")
+            m = sum(1 for i in ri if i.severity == "medium")
+            l = sum(1 for i in ri if i.severity == "low")
+            lines.append(f"| **{role}** | {c} | {h} | {m} | {l} | {len(ri)} |")
+        lines += [""]
 
     lines += ["---", ""]
 

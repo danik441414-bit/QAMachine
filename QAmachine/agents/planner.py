@@ -2,7 +2,7 @@ from __future__ import annotations
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from schemas import TestMission
+from schemas import TestMission, RoleConfig
 
 _llm = ChatAnthropic(model="claude-haiku-4-5-20251001", temperature=0.0, max_tokens=2048)
 _structured = _llm.with_structured_output(TestMission)
@@ -262,6 +262,26 @@ GENERAL RULES
   The agent must be able to log in to reach the content, even in ui_ux or load_performance modes.
 - stop_conditions: 2-3 signals to stop early (all scope covered, auth wall blocked, CAPTCHA, etc.)
 - Be specific to this URL and task. Avoid generic filler.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MULTI-ROLE TESTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Detect multi-role intent when the task mentions testing under MULTIPLE accounts or roles:
+  Triggers: "as admin and user", "под разными ролями", "admin and regular user",
+            "test as admin", "two roles", "несколько ролей", "admin/user",
+            "проверь как администратор и как пользователь", "multi-role",
+            "guest and logged-in user", "different accounts"
+
+If multi-role detected:
+  roles: list of RoleConfig objects, one per role.
+    Each has: name (e.g. "admin", "user", "guest") and credentials_text.
+    Extract credentials for EACH role from the task.
+    Guest/anonymous role: name="guest", credentials_text="" (no login needed).
+  credentials_text: set to first role's credentials (for backward compat).
+  recommended_max_steps: multiply single-role budget × number of roles (capped at 80).
+
+If NOT multi-role: roles = [] (empty list — existing single-role behaviour).
 """
 
 

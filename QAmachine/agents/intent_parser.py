@@ -51,6 +51,13 @@ INTENT DETECTION
              сгенерируй playwright, create automation, automation test,
              e2e automation, automated scenario
 
+5. "compare_envs"   — compare two environments (staging vs production, two URLs)
+   Triggers: compare, сравни, сравнить, сравнение, compare with, vs, versus,
+             стейджинг vs прод, staging vs prod, staging vs production,
+             найди разницу, find differences, что изменилось между,
+             compare environments, two urls, два урла, сравни урлы,
+             compare staging, compare production, diff between
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SCOPE DETECTION (applies to ALL intents)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -130,6 +137,18 @@ automation_test_type:
   "regression"  if: regression, регрессия, regression test
   "mobile"      if: mobile, мобильный
   Default: "functional"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+COMPARE_ENVS FIELDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+comparison_url — the SECOND URL mentioned in the task (the one to compare against).
+  The primary URL is always provided separately. Extract only the second URL from the task text.
+  Examples:
+    "compare https://staging.site.com with https://site.com" → "https://site.com"
+    "сравни https://staging.site.com и https://prod.site.com" → "https://prod.site.com"
+    "compare with https://staging.myapp.com" → "https://staging.myapp.com"
+  If no second URL found in task: "" (user will be prompted)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CREDENTIALS

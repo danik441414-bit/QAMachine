@@ -23,6 +23,7 @@ _INTENT_LABEL = {
     Intent.MOBILE_TEST:         "Mobile QA Test",
     Intent.GENERATE_DOCS:       "QA Document Generation",
     Intent.GENERATE_AUTOMATION: "Playwright Test Generation",
+    Intent.COMPARE_ENVS:        "Environment Comparison",
 }
 
 _DOC_LABEL = {
@@ -99,6 +100,8 @@ def _print_intent_preview(intent_result) -> None:
         print(f"  Creds    : {intent_result.credentials_text}")
     if intent_result.changed_areas:
         print(f"  Changed  : {', '.join(intent_result.changed_areas)}")
+    if intent == Intent.COMPARE_ENVS and getattr(intent_result, "comparison_url", ""):
+        print(f"  Compare  : {intent_result.comparison_url}")
 
     print("=" * 54 + "\n")
 
@@ -159,6 +162,50 @@ def _run_browser_test(target_url: str, task: str, intent_result) -> None:
     orch = Orchestrator(target_url=target_url, user_task=task, mission=mission)
     report_path = asyncio.run(orch.run())
     print(f"\nDone. Report: {report_path}")
+
+
+def _run_comparison(target_url: str, intent_result) -> None:
+    """COMPARE_ENVS — screenshot + LLM diff of two environments."""
+    from agents import comparison_agent
+    import datetime
+    import os
+
+    comparison_url = getattr(intent_result, "comparison_url", "").strip()
+    if not comparison_url:
+        comparison_url = input("Second URL to compare against: ").strip()
+        if not comparison_url:
+            print("Second URL is required for comparison.")
+            return
+        if not comparison_url.startswith(("http://", "https://")):
+            comparison_url = "https://" + comparison_url
+
+    print(f"\n  A (primary)  : {target_url}")
+    print(f"  B (compare)  : {comparison_url}")
+    if not _confirm("Start comparison? [Y/n]: "):
+        print("Cancelled.")
+        return
+
+    print("\nRunning environment comparison...")
+    results = asyncio.run(comparison_agent.run(target_url, comparison_url))
+
+    report_md = comparison_agent.generate_report(
+        url1=target_url,
+        url2=comparison_url,
+        results=results,
+        label1="Primary",
+        label2="Comparison",
+    )
+
+    os.makedirs(os.path.join("reports", "qa_reports"), exist_ok=True)
+    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    report_path = os.path.join("reports", "qa_reports", f"Comparison_{ts}.md")
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write(report_md)
+
+    total = sum(len(r.differences) for r in results)
+    critical = sum(1 for r in results for d in r.differences if d.severity == "critical")
+    print(f"\nComparison complete: {len(results)} pages, {total} differences ({critical} critical)")
+    print(f"Report: {report_path}")
 
 
 def _run_generate_docs(target_url: str, intent_result) -> None:
@@ -231,6 +278,9 @@ def main() -> None:
 
     if intent in (Intent.BROWSER_TEST, Intent.MOBILE_TEST):
         _run_browser_test(target_url, task, intent_result)
+
+    elif intent == Intent.COMPARE_ENVS:
+        _run_comparison(target_url, intent_result)
 
     elif intent == Intent.GENERATE_DOCS:
         _run_generate_docs(target_url, intent_result)

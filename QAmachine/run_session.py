@@ -107,6 +107,47 @@ async def main(run_id: str, target_url: str, task: str) -> dict:
             "artifacts":   artifacts,
         }
 
+    elif intent == Intent.COMPARE_ENVS:
+        from agents import comparison_agent
+        import datetime
+
+        comparison_url = getattr(intent_result, "comparison_url", "").strip()
+        if not comparison_url:
+            # SaaS: second URL must come from task text — can't prompt interactively
+            return {
+                "step_count": 0, "issue_count": 0,
+                "summary": "Comparison requires a second URL. Include it in the task: 'compare with https://staging.site.com'",
+                "report_path": "", "mode": "compare_envs", "artifacts": [],
+            }
+
+        results = await comparison_agent.run(target_url, comparison_url, traces_dir="ux_traces")
+        report_md = comparison_agent.generate_report(
+            url1=target_url, url2=comparison_url, results=results,
+            label1="Primary", label2="Comparison",
+        )
+
+        os.makedirs(os.path.join("reports", "qa_reports"), exist_ok=True)
+        ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        report_path = os.path.join("reports", "qa_reports", f"Comparison_{ts}.md")
+        with open(report_path, "w", encoding="utf-8") as f:
+            f.write(report_md)
+        abs_report = os.path.abspath(report_path)
+
+        total = sum(len(r.differences) for r in results)
+        critical = sum(1 for r in results for d in r.differences if d.severity == "critical")
+        summary = (
+            f"Compared {len(results)} page(s) between environments. "
+            f"{total} difference(s) found ({critical} critical)."
+            if total else f"Compared {len(results)} page(s) — no differences found."
+        )
+        return {
+            "step_count": len(results), "issue_count": total,
+            "summary": summary, "report_path": abs_report, "mode": "compare_envs",
+            "artifacts": [{"id": str(uuid.uuid4()), "type": "report",
+                           "name": os.path.basename(abs_report), "path": abs_report,
+                           "size": os.path.getsize(abs_report) if os.path.exists(abs_report) else 0}],
+        }
+
     elif intent == Intent.GENERATE_DOCS:
         doc_type = intent_result.doc_type or DocType.TEST_CASES
         content  = doc_generator.generate(target_url, intent_result)

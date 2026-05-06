@@ -17,6 +17,7 @@ class Intent(str, Enum):
     MOBILE_TEST        = "mobile_test"        # mobile-emulated QA session
     GENERATE_DOCS      = "generate_docs"      # test cases / checklist / test plan
     GENERATE_AUTOMATION = "generate_automation"  # playwright .py test file
+    COMPARE_ENVS       = "compare_envs"       # staging vs production diff
 
 
 class DocType(str, Enum):
@@ -83,6 +84,10 @@ class IntentResult(BaseModel):
     changed_areas: list[str] = Field(
         default_factory=list,
         description="For regression: areas the user says were recently changed"
+    )
+    comparison_url: str = Field(
+        default="",
+        description="For COMPARE_ENVS: the second URL to compare against (e.g. staging URL)"
     )
 
 

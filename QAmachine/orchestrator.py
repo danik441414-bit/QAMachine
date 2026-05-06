@@ -718,6 +718,25 @@ class Orchestrator:
 
         return False
 
+    # ── Custom JS hook ────────────────────────────────────────────────────────
+
+    async def _run_custom_js(self, page: Page, step: int) -> None:
+        """Execute user-provided JS on every page before the agent acts.
+        Only runs if mission.custom_js is set. Errors are logged but never crash the session.
+        """
+        js = self.mission.custom_js if self.mission else ""
+        if not js:
+            return
+        try:
+            result = await page.evaluate(js)
+            if step == 1:
+                print(f"  [JS] Custom hook active: {js[:60]}{'...' if len(js) > 60 else ''}")
+            if result is not None and step == 1:
+                print(f"  [JS] Hook returned: {str(result)[:80]}")
+        except Exception as e:
+            if step == 1:
+                log.warning("[custom_js] Hook error (step %d): %s", step, e)
+
     # ── Main loop ──────────────────────────────────────────────────────────────
 
     async def _main_loop(self, page: Page) -> None:
@@ -749,7 +768,10 @@ class Orchestrator:
             # Progress signal — parsed by SaaS engine.py for real-time UI updates
             print(f"QAMACHINE_PROGRESS:{step}/{self.max_steps}", flush=True)
 
-            # 1a. Cookie banner auto-dismiss (before blocker check so it doesn't interfere)
+            # 1a. Custom JS hook — runs before anything else on each step
+            await self._run_custom_js(page, step)
+
+            # 1b. Cookie banner auto-dismiss (before blocker check so it doesn't interfere)
             await self._dismiss_cookie_banner(page)
 
             # 1b. Hard blocker check (CAPTCHA, auth wall, bot protection, site error)

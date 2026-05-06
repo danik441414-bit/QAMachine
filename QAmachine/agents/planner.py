@@ -264,6 +264,20 @@ GENERAL RULES
 - Be specific to this URL and task. Avoid generic filler.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CUSTOM JS HOOK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+If the task contains a JavaScript snippet to run on every page, extract it into custom_js.
+Triggers: "run js:", "execute js:", "inject:", "hook:", "запусти js:", "внедри:",
+          task contains a code block with JS, localStorage.setItem, document.cookie, etc.
+
+Examples:
+  "run js: localStorage.setItem('featureFlag', 'true')" → custom_js: "localStorage.setItem('featureFlag', 'true')"
+  "inject: document.cookie = 'session=abc'" → custom_js: "document.cookie = 'session=abc'"
+
+If no JS hook in task: custom_js = "" (empty).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 MULTI-ROLE TESTING
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

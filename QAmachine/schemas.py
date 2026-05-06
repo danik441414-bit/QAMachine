@@ -222,6 +222,15 @@ class TestMission(BaseModel):
             "Empty = single session using credentials_text (existing behaviour)."
         )
     )
+    custom_js: str = Field(
+        default="",
+        description=(
+            "Optional JavaScript snippet injected into every page before the agent acts. "
+            "Runs after page load. Use for: localStorage overrides, feature flags, "
+            "cookie injection, banner dismissal, test data setup. "
+            "Must be a self-contained JS expression or IIFE. Empty = disabled."
+        )
+    )
 
 
 # ── Per-step context ───────────────────────────────────────────────────────────

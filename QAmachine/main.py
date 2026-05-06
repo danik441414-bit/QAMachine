@@ -155,6 +155,13 @@ def _run_browser_test(target_url: str, task: str, intent_result) -> None:
 
     _print_mission_plan(mission)
 
+    # Optional: custom JS hook (shown only if not already extracted by planner)
+    if not mission.custom_js:
+        js_hint = input("Custom JS hook (optional, press Enter to skip): ").strip()
+        if js_hint:
+            mission.custom_js = js_hint
+            print(f"  JS hook set: {js_hint[:60]}{'...' if len(js_hint) > 60 else ''}")
+
     if not _confirm("Start? [Y/n]: "):
         print("Cancelled.")
         return

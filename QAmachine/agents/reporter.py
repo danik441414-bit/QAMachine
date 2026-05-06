@@ -287,6 +287,8 @@ def generate(
         *([f"| **Device** | {mc.device_name} ({mc.viewport_width}x{mc.viewport_height}) |"] if mc else []),
         *([ f"| **Changed areas** | {', '.join(mission.changed_areas)} |"] if mission.changed_areas else []),
         *([ f"| **Scope keywords** | `{', '.join(mission.scope_url_keywords)}` |"] if mission.scope_url_keywords else []),
+        *([ f"| **Roles tested** | {', '.join(r.name for r in mission.roles)} |"] if getattr(mission, 'roles', []) else []),
+        *([ f"| **JS hook** | `{mission.custom_js[:80]}` |"] if getattr(mission, 'custom_js', '') else []),
         "",
         "---",
         "",

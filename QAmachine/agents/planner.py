@@ -95,116 +95,114 @@ Pick exactly one mode:
 • "functional" — default if nothing above matches
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 3 — BUILD MISSION
+STEP 3 — BUILD MISSION (LITERAL FIRST)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-If test_scope is set, ALL coverage_targets and user_flows must be WITHIN that scope.
-Do not include targets outside the scope.
+RULE #1 — BE LITERAL. The user's task is the primary source of truth.
+  coverage_targets must directly reflect EXACTLY what the user asked to test.
+  Do NOT add targets the user didn't mention. Do NOT expand scope beyond their words.
 
-── ui_ux ────────────────────────────────────
-coverage_targets: visual zones within scope (or full site if no scope):
-  homepage, header, footer, nav menu, hero/banner, cards/listings,
-  forms, modals, buttons, typography, images
-strategy_notes: "Navigate each page type and scroll to audit visual consistency.
-  Focus on layout, spacing, contrast, overflow, alignment, broken images."
+  Examples of literal interpretation:
+  ✅ "test the search" → coverage_targets: ["search input", "search results"]
+  ✅ "check homepage display" → coverage_targets: ["homepage visual layout"]
+  ✅ "verify the login form works" → coverage_targets: ["login form submission", "error messages", "redirect after login"]
+  ✅ "test checkout" → coverage_targets: ["add to cart", "checkout flow", "payment step", "order confirmation"]
+  ✅ "full audit" → coverage_targets: all major sections of the site
+  ❌ "test search" → coverage_targets: ["search", "nav", "footer", "homepage"] — WRONG, user didn't ask for nav/footer
+
+RULE #2 — strategy_notes must describe HOW to execute the user's EXACT request.
+  Write it as concrete instructions, not generic mode descriptions.
+
+  Examples:
+  ✅ "test search" → strategy_notes: "Go directly to search. Test: empty query, single char,
+     valid query (check results), XSS payload, very long string. Stay on search — do not leave."
+  ✅ "check homepage display" → strategy_notes: "Stay on homepage only. Scroll top to bottom.
+     Check layout, alignment, overflow, broken images, contrast. Do not click nav links."
+  ✅ "test login form" → strategy_notes: "Go to login page. Phase 1: empty submit.
+     Phase 2: invalid email format. Phase 3: wrong credentials. Phase 4: valid login.
+     Report any unexpected behavior at each phase."
+
+RULE #3 — scope = what user explicitly named. If user said one thing, test ONE thing.
+  If scope is set: ALL coverage_targets must be inside that scope.
+
+── ui_ux ─────────────────────────────────────
+coverage_targets: ONLY the visual zones the user mentioned (or all if full site).
+  Examples: "homepage display" → ["homepage visual"], "button styling" → ["buttons visual state"]
+strategy_notes: Literal description of what visual things to check per user request.
+  Focus: layout, spacing, contrast, overflow, alignment, broken images, typography.
 allow_typing: false (unless credentials needed to reach scope)
 user_flows: []
 changed_areas: []
 
 ── functional ────────────────────────────────
-coverage_targets: interactive features within scope:
-  nav, primary CTAs, search/filter, forms, CRUD, pagination, auth
-strategy_notes: "Test each feature end-to-end. Click buttons, submit forms,
-  use search/filters. Note any feature that breaks or returns wrong output."
+coverage_targets: ONLY the features the user mentioned.
+strategy_notes: Literal step-by-step of what to test per user request.
+  Include: happy path, then error cases, then edge cases.
 allow_typing: true
 user_flows: []
 changed_areas: []
 
 ── regression ────────────────────────────────
-changed_areas: extract what the user says was changed from the task text.
-  If not specified: use ["not specified — scan full site for regressions"].
-coverage_targets: changed areas + their neighboring/dependent zones.
-  E.g. if cart changed → ['cart', 'checkout', 'product page add-to-cart', 'order summary']
-strategy_notes: "Focus on changed areas first. Then check adjacent zones that depend on
-  them. Run a smoke check on related user flows. Skip unrelated sections."
+changed_areas: extract what the user says was recently changed.
+  If not specified: ["not specified — scan full site"].
+coverage_targets: changed areas + their direct dependencies.
+strategy_notes: "Test changed areas first. Then adjacent zones. Skip unrelated sections."
 allow_typing: true
 user_flows: []
 
 ── network ───────────────────────────────────
-coverage_targets: page types/sections to visit to trigger network traffic:
-  key pages, forms, data-loading sections, dynamic content areas
-strategy_notes: "Navigate through key pages and interact with features to generate
-  network traffic. Watch for 4xx/5xx errors and slow responses per step."
+coverage_targets: pages/features user wants to monitor for network errors.
+strategy_notes: "Navigate to trigger network traffic. Watch for 4xx/5xx and slow responses."
 allow_typing: true
 user_flows: []
 changed_areas: []
 
 ── api ───────────────────────────────────────
-coverage_targets: features likely to trigger API calls:
-  login, forms, search, CRUD, data loading, dynamic content
-strategy_notes: "Navigate and interact to trigger as many unique API calls as possible.
-  After the session, endpoints will be tested independently."
+coverage_targets: features that trigger API calls per user's request.
+strategy_notes: "Trigger as many API calls as possible. Endpoints tested post-session."
 allow_typing: true
 user_flows: []
 changed_areas: []
 
 ── load_performance ──────────────────────────
-coverage_targets: key page types to measure:
-  homepage, category/listing, detail/product, forms, dashboard, search results
-strategy_notes: "Navigate to each key page type. Measure load time per page.
-  Identify slow pages (>3000ms) and heavy resources. Minimal interaction needed."
+coverage_targets: page types user wants measured.
+strategy_notes: "Navigate to each page type. Record load time. Flag pages >3000ms."
 allow_typing: false (unless scope requires login)
 user_flows: []
 changed_areas: []
 
 ── mobile ────────────────────────────────────
-coverage_targets: mobile-specific check areas within scope (or full site):
-  mobile navigation / burger menu, sticky header, all forms (input sizing),
-  modals (fit on screen), images (responsive scaling), CTAs (touch targets),
-  text readability, horizontal scroll, bottom navigation bar (if present).
-  Narrow to test_scope if set.
-strategy_notes: "Navigate at mobile viewport. Always try the burger menu first.
-  Scroll to see full content. Check forms, touch targets, overlapping elements,
-  horizontal overflow, sticky headers covering content. Report mobile-specific issues only."
+coverage_targets: mobile areas the user mentioned (or standard mobile checklist if full site).
+strategy_notes: "Mobile viewport. Burger menu first. Check touch targets, overflow,
+  responsive layout, sticky headers. Narrow to user's exact scope."
 allow_typing: true
 user_flows: []
-changed_areas: [] (for mobile+regression: extract changed areas from task)
+changed_areas: []
 
 ── accessibility ─────────────────────────────
-coverage_targets: page types and key UI components to audit:
-  homepage, auth forms (login/signup), navigation, main content pages,
-  interactive widgets (modals, dropdowns, carousels), forms, error states.
-  Narrow to test_scope if set.
-strategy_notes: "Navigate to each key page type and interact with major UI zones.
-  axe-core automatically audits each page — your job is to REACH as many distinct
-  page states as possible: open modals, expand accordions, fill forms.
-  Each unique page state gets a full WCAG 2.1 AA scan.
-  Focus on breadth of coverage — visit as many unique URLs and states as possible."
-allow_typing: true (needed to reach authenticated pages and form states)
+coverage_targets: page types/components user wants audited.
+strategy_notes: "Navigate to reach distinct page states. axe-core runs automatically.
+  Open modals, fill forms, expand accordions to expose more states."
+allow_typing: true
 user_flows: []
 changed_areas: []
 
 ── specific_flow ─────────────────────────────
-coverage_targets: [the flow name from the task]
-strategy_notes: "Execute the flow steps in strict order. Report any step failure.
-  After the positive path, try one negative edge case."
+coverage_targets: [the exact flow name from the task]
+strategy_notes: "Execute the flow steps EXACTLY as user described. Report any step failure.
+  After positive path, try one obvious negative edge case."
 allow_typing: true
-user_flows: Extract ordered step-by-step instructions from the task.
-  Each step: "Step N: [single action]"
-  If steps not specified: infer the logical sequence for the described flow.
+user_flows: Extract ordered steps literally from the task.
+  If steps not explicit: infer the minimal logical sequence for the described flow.
 changed_areas: []
 
 ── all_flows ─────────────────────────────────
-Analyze URL to identify app type. List typical user flows for that app.
-coverage_targets: flow names list
-strategy_notes: "PHASE 1 — POSITIVE: run happy path for ALL flows.
-  PHASE 2 — NEGATIVE: re-run each flow with invalid/missing data.
-  Return to main between flows."
+Analyze URL to identify app type. List all typical user flows.
+coverage_targets: list of flow names
+strategy_notes: "PHASE 1 — POSITIVE: happy path for each flow.
+  PHASE 2 — NEGATIVE: invalid/missing data for each flow."
 allow_typing: true
-user_flows: List flows in pairs:
-  "Login — POSITIVE: valid credentials, verify dashboard"
-  "Login — NEGATIVE: wrong password, verify error shown"
-  ... one pair per identified flow ...
+user_flows: Pairs: "FlowName — POSITIVE: ..." and "FlowName — NEGATIVE: ..."
 changed_areas: []
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -369,9 +369,18 @@ def decide(ctx: PageContext) -> NavigationDecision:
         typing_rule = "Typing is FORBIDDEN. Never use action='type'."
 
     # ── Static part (constant for entire session) → cached by Anthropic ──────
+    task_block = (
+        f"\n━━ USER'S EXACT REQUEST (your primary directive) ━━━━━━━━━━━━━━━━━━\n"
+        f'"{ctx.user_task}"\n'
+        f"Everything you do must serve THIS request — not more, not less.\n"
+        f"If the request mentions only one thing (e.g. 'search', 'homepage', 'login form'),\n"
+        f"test ONLY that thing. Do not expand scope beyond what was literally asked.\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    ) if ctx.user_task else ""
+
     static_text = "\n".join([
         _BASE_SYSTEM,
-        "",
+        task_block,
         _scope_block(ctx.mission),
         _mode_rules(ctx.mission),
         "",

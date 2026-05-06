@@ -226,6 +226,7 @@ class PageContext(BaseModel):
     action_history: list[str]
     mission: TestMission
     uncovered_targets: list[str] = Field(default_factory=list)
+    user_task: str = ""   # the user's original literal request — always visible to explorer
 
 
 # ── Explorer output ────────────────────────────────────────────────────────────

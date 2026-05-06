@@ -28,8 +28,8 @@ REPORTS_DIR = os.path.join("reports", "qa_reports")
 # Fallback step budgets when no pre-built mission is provided (legacy mode)
 _MODE_STEPS = {TestMode.SMOKE: 15, TestMode.STANDARD: 35, TestMode.DEEP: 100}
 
-# How many consecutive steps outside scope before we force re-entry
-_SCOPE_DRIFT_THRESHOLD = 2
+# Steps outside scope before forced re-entry (1 = immediate, strict enforcement)
+_SCOPE_DRIFT_THRESHOLD = 1
 
 
 class Orchestrator:
@@ -717,6 +717,7 @@ class Orchestrator:
             available = self.tracker.available_elements(full_dom)
             ctx.dom_elements = available
             ctx.uncovered_targets = self._compute_uncovered_targets()
+            ctx.user_task = self.user_task   # pass literal task to explorer every step
 
             # 5. Save screenshot (compressed JPEG from context_builder)
             screenshot_path = os.path.join(TRACES_DIR, f"step_{step:03d}.jpg")

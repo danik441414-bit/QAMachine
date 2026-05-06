@@ -9,6 +9,16 @@ from schemas import VerifiedIssue, StepLog, TestMission, SessionMode
 
 _llm = ChatAnthropic(model="claude-haiku-4-5-20251001", temperature=0.3, max_tokens=3000)
 
+_PRIORITY_SYSTEM = """You are a senior QA engineer writing the "Fix Priority" section of a QA report.
+Given a list of confirmed bugs, identify the top 3 most important to fix first.
+
+For each, write:
+1. **Bug** — brief description (one line)
+2. **Business impact** — who is affected and how
+3. **Fix steps** — 2-3 concrete actions the dev team should take
+
+Format in Markdown with numbered sections. Be direct, specific, actionable."""
+
 _UX_SYSTEM = """You are a Lead UX/UI Product Designer conducting a usability audit.
 You are given a storyboard of screenshots from an automated QA session.
 Analyze and provide recommendations on:
@@ -248,6 +258,29 @@ def _perf_section(
     return "\n".join(lines) if lines else "_No performance metrics recorded._"
 
 
+def _priority_section(verified_issues: list[VerifiedIssue], target_url: str) -> str:
+    priority_issues = [v for v in verified_issues if v.severity in ("critical", "high")]
+    if not priority_issues:
+        priority_issues = verified_issues[:5]
+    if not priority_issues:
+        return ""
+    issue_list = "\n".join(
+        f"{i+1}. [{v.severity.upper()}] {v.description} (URL: {v.url})"
+        for i, v in enumerate(priority_issues[:10])
+    )
+    try:
+        resp = _llm.invoke([
+            SystemMessage(content=_PRIORITY_SYSTEM),
+            HumanMessage(content=(
+                f"Site: {target_url}\n\nConfirmed bugs:\n{issue_list}\n\n"
+                "List the top 3 to fix first with business impact and fix steps."
+            )),
+        ])
+        return str(resp.content)
+    except Exception as e:
+        return f"_Priority analysis failed: {e}_"
+
+
 def generate(
     mission: TestMission,
     target_url: str,
@@ -289,6 +322,8 @@ def generate(
         *([ f"| **Scope keywords** | `{', '.join(mission.scope_url_keywords)}` |"] if mission.scope_url_keywords else []),
         *([ f"| **Roles tested** | {', '.join(r.name for r in mission.roles)} |"] if getattr(mission, 'roles', []) else []),
         *([ f"| **JS hook** | `{mission.custom_js[:80]}` |"] if getattr(mission, 'custom_js', '') else []),
+        *([f"| **Browser** | {mission.browser_engine.upper()} |"] if getattr(mission, 'browser_engine', 'chromium') not in ('', 'chromium') else []),
+        *([f"| **Locales** | {', '.join(mission.locales or ([mission.locale] if mission.locale else []))} |"] if getattr(mission, 'locales', []) or getattr(mission, 'locale', '') else []),
         "",
         "---",
         "",
@@ -335,7 +370,15 @@ def generate(
             lines.append(f"| **{role}** | {c} | {h} | {m} | {l} | {len(ri)} |")
         lines += [""]
 
-    lines += ["---", ""]
+    # ── Priority recommendations (only when confirmed issues exist) ───────────────
+    _has_priority = False
+    if verified_issues:
+        priority_text = _priority_section(verified_issues, target_url)
+        if priority_text:
+            lines += ["## Fix Priority Recommendations", "", priority_text, "", "---", ""]
+            _has_priority = True
+    if not _has_priority:
+        lines += ["---", ""]
 
     # ── Mode-specific sections ─────────────────────────────────────────────────
     mode = mission.session_mode

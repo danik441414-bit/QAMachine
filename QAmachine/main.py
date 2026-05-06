@@ -130,6 +130,12 @@ def _print_mission_plan(mission) -> None:
     print(f"  Targets  : {targets}")
     print(f"  Steps    : {mission.recommended_max_steps}")
     print(f"  Typing   : {'Yes' if mission.allow_typing else 'No'}")
+    engine = getattr(mission, "browser_engine", "chromium") or "chromium"
+    if engine != "chromium":
+        print(f"  Browser  : {engine.upper()}")
+    _locales = getattr(mission, "locales", []) or ([getattr(mission, "locale", "")] if getattr(mission, "locale", "") else [])
+    if _locales:
+        print(f"  Locales  : {', '.join(_locales)}")
     if mission.credentials_text:
         print(f"  Creds    : {mission.credentials_text}")
     print("-" * 54)

@@ -97,6 +97,9 @@ class Orchestrator:
         # Cookie banner tracking
         self._cookie_banner_streak = 0      # Steps where banner was detected but not dismissed
 
+        # Multi-locale: current locale label (empty = no locale specified)
+        self.current_locale: str = ""
+
         # Broken-link dedup: URLs already reported as 404
         self._reported_404_urls: set[str] = set()
 
@@ -173,7 +176,18 @@ class Orchestrator:
             print(f"Changed: {', '.join(self.mission.changed_areas)}")
 
         async with async_playwright() as p:
-            browser: Browser = await p.chromium.launch(headless=self.headless)
+            engine_name = (self.mission.browser_engine or "chromium").lower()
+            engine = getattr(p, engine_name, p.chromium)
+            browser: Browser = await engine.launch(headless=self.headless)
+            if engine_name != "chromium":
+                print(f"Browser: {engine_name.upper()}")
+
+            # Build locale list: multi-locale if defined
+            locales_to_test = self.mission.locales if self.mission.locales else (
+                [self.mission.locale] if self.mission.locale else [""]
+            )
+            if len(locales_to_test) > 1:
+                print(f"Locales: {', '.join(locales_to_test)}")
 
             # Build role list: multi-role if defined, else single synthetic role
             roles = self.mission.roles if self.mission.roles else [
@@ -182,72 +196,81 @@ class Orchestrator:
             if len(roles) > 1:
                 print(f"Roles  : {', '.join(r.name for r in roles)}")
 
-            for role in roles:
-                self.current_role = role.name
-                # Override active credentials for this role
-                self.mission.credentials_text = role.credentials_text
-
-                # Reset per-role tracking state
-                self._credentials_typed   = False
-                self._login_error_streak  = 0
-                self._auth_wall_streak    = 0
-                self._auth_state_saved    = False
-                self._auth_state_loaded   = False
-                self._go_to_main_streak   = 0
-                self._no_elements_streak  = 0
-
-                if role.name:
+            for locale_val in locales_to_test:
+                self.current_locale = locale_val
+                if locale_val and len(locales_to_test) > 1:
                     print(f"\n{'='*40}")
-                    print(f"  ROLE: {role.name.upper()}")
+                    print(f"  LOCALE: {locale_val.upper()}")
                     print(f"{'='*40}")
 
-                mc = self.mission.mobile_config if self.mission else None
+                for role in roles:
+                    self.current_role = role.name
+                    # Override active credentials for this role
+                    self.mission.credentials_text = role.credentials_text
 
-                # Load saved auth state if credentials provided and a state file exists
-                saved_state = self._auth_state_path()
-                use_saved   = bool(saved_state and os.path.exists(saved_state))
-                if use_saved:
-                    self._auth_state_loaded = True
-                    print(f"Auth   : Loading saved session from {saved_state}")
+                    # Reset per-role tracking state
+                    self._credentials_typed   = False
+                    self._login_error_streak  = 0
+                    self._auth_wall_streak    = 0
+                    self._auth_state_saved    = False
+                    self._auth_state_loaded   = False
+                    self._go_to_main_streak   = 0
+                    self._no_elements_streak  = 0
 
-                base_ctx_kwargs: dict = {"storage_state": saved_state} if use_saved else {}
-                if mc:
-                    context = await browser.new_context(
-                        viewport={"width": mc.viewport_width, "height": mc.viewport_height},
-                        user_agent=mc.user_agent or None,
-                        is_mobile=mc.is_mobile,
-                        has_touch=mc.has_touch,
-                        device_scale_factor=mc.device_scale_factor,
-                        **base_ctx_kwargs,
-                    )
-                    if role == roles[0]:
-                        print(f"Device : {mc.device_name} ({mc.viewport_width}x{mc.viewport_height})")
-                else:
-                    context = await browser.new_context(
-                        viewport={"width": 1280, "height": 720},
-                        **base_ctx_kwargs,
-                    )
+                    if role.name:
+                        print(f"\n{'='*40}")
+                        print(f"  ROLE: {role.name.upper()}")
+                        print(f"{'='*40}")
 
-                page: Page = await context.new_page()
-                page.on("console",   self._on_console)
-                page.on("pageerror", lambda err: self._console_errors.append(str(err)))
-                page.on("response",  self._on_response)
+                    mc = self.mission.mobile_config if self.mission else None
 
-                try:
-                    print(f"Navigating to {self.target_url}...")
-                    await page.goto(self.target_url, wait_until="domcontentloaded", timeout=60_000)
-                    await self._main_loop(page)
-                except KeyboardInterrupt:
-                    print("\nSession interrupted.")
-                    await context.close()
-                    break
-                except Exception as e:
-                    print(f"\nFatal session error: {e}")
-                    traceback.print_exc()
-                finally:
-                    if not self._auth_state_loaded:
-                        await self._save_auth_state(context)
-                    await context.close()
+                    # Load saved auth state if credentials provided and a state file exists
+                    saved_state = self._auth_state_path()
+                    use_saved   = bool(saved_state and os.path.exists(saved_state))
+                    if use_saved:
+                        self._auth_state_loaded = True
+                        print(f"Auth   : Loading saved session from {saved_state}")
+
+                    base_ctx_kwargs: dict = {"storage_state": saved_state} if use_saved else {}
+                    if locale_val:
+                        base_ctx_kwargs["locale"] = locale_val
+                    if mc:
+                        context = await browser.new_context(
+                            viewport={"width": mc.viewport_width, "height": mc.viewport_height},
+                            user_agent=mc.user_agent or None,
+                            is_mobile=mc.is_mobile,
+                            has_touch=mc.has_touch,
+                            device_scale_factor=mc.device_scale_factor,
+                            **base_ctx_kwargs,
+                        )
+                        if role == roles[0]:
+                            print(f"Device : {mc.device_name} ({mc.viewport_width}x{mc.viewport_height})")
+                    else:
+                        context = await browser.new_context(
+                            viewport={"width": 1280, "height": 720},
+                            **base_ctx_kwargs,
+                        )
+
+                    page: Page = await context.new_page()
+                    page.on("console",   self._on_console)
+                    page.on("pageerror", lambda err: self._console_errors.append(str(err)))
+                    page.on("response",  self._on_response)
+
+                    try:
+                        print(f"Navigating to {self.target_url}...")
+                        await page.goto(self.target_url, wait_until="domcontentloaded", timeout=60_000)
+                        await self._main_loop(page)
+                    except KeyboardInterrupt:
+                        print("\nSession interrupted.")
+                        await context.close()
+                        break
+                    except Exception as e:
+                        print(f"\nFatal session error: {e}")
+                        traceback.print_exc()
+                    finally:
+                        if not self._auth_state_loaded:
+                            await self._save_auth_state(context)
+                        await context.close()
 
             await browser.close()
 
@@ -510,6 +533,9 @@ class Orchestrator:
             evidence = f"{v.get('help', '')}. {node_summaries}".strip(". ")
             desc = f"[WCAG] {v.get('help', v.get('description', rule_id))} (axe: {rule_id})"
 
+            axe_role = self.current_role
+            if self.current_locale:
+                axe_role = f"{self.current_locale}:{axe_role}" if axe_role else self.current_locale
             issues.append(VerifiedIssue(
                 description=desc,
                 severity=severity,
@@ -517,7 +543,7 @@ class Orchestrator:
                 step=step,
                 evidence=evidence[:500],
                 screenshot_path=screenshot_path,
-                role=self.current_role,
+                role=axe_role,
             ))
 
         if issues:
@@ -1005,7 +1031,10 @@ class Orchestrator:
         for r in results:
             if isinstance(r, VerifiedIssue):
                 if not self._is_duplicate_issue(r.description):
-                    r.role = self.current_role
+                    role_tag = self.current_role
+                    if self.current_locale:
+                        role_tag = f"{self.current_locale}:{role_tag}" if role_tag else self.current_locale
+                    r.role = role_tag
                     verified.append(r)
             elif isinstance(r, Exception):
                 print(f"  Judge error: {r}")

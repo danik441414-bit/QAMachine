@@ -252,6 +252,45 @@ Within that ceiling, pick the RIGHT budget for the scope and mode:
   If step_budget = 0 (not provided): use the values above freely.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BROWSER ENGINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Detect which browser engine to use. Default: "chromium".
+
+"firefox"  → firefox, mozilla, мозилла, in firefox, на firefox, в firefox
+"webkit"   → webkit, safari, in safari, на safari, в safari, apple browser
+"chromium" → chrome, chromium, default (no keyword needed)
+
+If multiple engines mentioned, pick the first non-chromium one.
+If nothing mentioned: browser_engine = "chromium".
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LOCALIZATION TESTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Detect locale testing intent. Triggers:
+
+Single locale:
+  "test in russian", "проверь на русском", "test in english", "проверь на английском",
+  "test in spanish", "проверь на испанском", "test in french", "check in german",
+  "locale ru", "язык русский", "на русском языке", "in german", "в немецком"
+
+Multiple locales:
+  "test in russian and english", "проверь на русском и английском",
+  "multiple locales", "несколько языков", "all languages", "test localization",
+  "локализация", "l10n", "i18n", "ru and en"
+
+Locale codes (BCP 47):
+  russian → "ru-RU" | english → "en-US" | spanish → "es-ES" | french → "fr-FR"
+  german  → "de-DE" | italian → "it-IT" | portuguese → "pt-BR" | chinese → "zh-CN"
+  japanese → "ja-JP" | arabic → "ar-SA" | dutch → "nl-NL" | polish → "pl-PL"
+  ukrainian → "uk-UA"
+
+ONE locale:  locale = "ru-RU", locales = []
+MULTIPLE:    locale = "", locales = ["ru-RU", "en-US"]
+NONE:        locale = "", locales = []
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 GENERAL RULES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 - credentials_text: extract login/password from the task in ANY format the user wrote them.

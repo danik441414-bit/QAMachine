@@ -231,6 +231,27 @@ class TestMission(BaseModel):
             "Must be a self-contained JS expression or IIFE. Empty = disabled."
         )
     )
+    browser_engine: str = Field(
+        default="chromium",
+        description=(
+            "Browser engine to launch: 'chromium' (default), 'firefox', or 'webkit' (Safari). "
+            "Detected from task keywords like 'test in firefox', 'safari', 'webkit'."
+        )
+    )
+    locale: str = Field(
+        default="",
+        description=(
+            "BCP 47 locale for single-locale testing, e.g. 'ru-RU', 'en-US', 'es-ES'. "
+            "Sets Accept-Language header and navigator.language in the browser context."
+        )
+    )
+    locales: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Multiple locales to test sequentially, e.g. ['ru-RU', 'en-US']. "
+            "Each locale gets a fresh browser context. Use for localization/i18n testing."
+        )
+    )
 
 
 # ── Per-step context ───────────────────────────────────────────────────────────

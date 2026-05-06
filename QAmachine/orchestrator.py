@@ -22,8 +22,9 @@ from context_builder import build_page_context
 from agents import planner, explorer, judge, reporter
 from agents import api_tester
 
-TRACES_DIR  = "ux_traces"
-REPORTS_DIR = os.path.join("reports", "qa_reports")
+TRACES_DIR      = "ux_traces"
+REPORTS_DIR     = os.path.join("reports", "qa_reports")
+AUTH_STATES_DIR = "auth_states"
 
 # Fallback step budgets when no pre-built mission is provided (legacy mode)
 _MODE_STEPS = {TestMode.SMOKE: 15, TestMode.STANDARD: 35, TestMode.DEEP: 100}
@@ -107,6 +108,39 @@ class Orchestrator:
         self._console_errors: list[str] = []
         self._network_buffer: list[dict] = []   # raw per-step, drained each step
 
+        # Auth state: saved context (cookies + localStorage) per domain+creds
+        self._auth_state_saved = False   # True once storage_state was saved this session
+        self._auth_state_loaded = False  # True if we started from a saved state
+
+    # ── Auth state persistence ─────────────────────────────────────────────────
+
+    def _auth_state_path(self) -> str | None:
+        """Return path for this domain+credentials combo, or None if no creds."""
+        if not (self.mission and self.mission.credentials_text):
+            return None
+        import hashlib
+        key = f"{self.base_domain}:{self.mission.credentials_text}"
+        h = hashlib.md5(key.encode()).hexdigest()[:8]
+        slug = self.base_domain.replace(".", "_").replace("-", "_")[:30]
+        return os.path.join(AUTH_STATES_DIR, f"{slug}_{h}.json")
+
+    async def _save_auth_state(self, context: BrowserContext) -> None:
+        """Save browser storage state (cookies + localStorage) after successful login."""
+        if self._auth_state_saved or self._login_error_streak > 0:
+            return
+        if not self._credentials_typed:
+            return
+        path = self._auth_state_path()
+        if not path:
+            return
+        try:
+            os.makedirs(AUTH_STATES_DIR, exist_ok=True)
+            await context.storage_state(path=path)
+            self._auth_state_saved = True
+            print(f"  [AUTH] Session saved → {path}")
+        except Exception as e:
+            log.warning("[auth] Could not save storage state: %s", e)
+
     # ── Public entry point ─────────────────────────────────────────────────────
 
     async def run(self) -> str:
@@ -139,7 +173,16 @@ class Orchestrator:
             browser: Browser = await p.chromium.launch(headless=self.headless)
 
             mc = self.mission.mobile_config if self.mission else None
+
+            # Load saved auth state if credentials provided and a state file exists
+            saved_state = self._auth_state_path()
+            use_saved   = bool(saved_state and os.path.exists(saved_state))
+            if use_saved:
+                self._auth_state_loaded = True
+                print(f"Auth   : Loading saved session from {saved_state}")
+
             context: BrowserContext
+            base_ctx_kwargs = {"storage_state": saved_state} if use_saved else {}
             if mc:
                 context = await browser.new_context(
                     viewport={"width": mc.viewport_width, "height": mc.viewport_height},
@@ -147,11 +190,13 @@ class Orchestrator:
                     is_mobile=mc.is_mobile,
                     has_touch=mc.has_touch,
                     device_scale_factor=mc.device_scale_factor,
+                    **base_ctx_kwargs,
                 )
                 print(f"Device : {mc.device_name} ({mc.viewport_width}x{mc.viewport_height})")
             else:
                 context = await browser.new_context(
-                    viewport={"width": 1280, "height": 720}
+                    viewport={"width": 1280, "height": 720},
+                    **base_ctx_kwargs,
                 )
 
             page: Page = await context.new_page()
@@ -171,6 +216,9 @@ class Orchestrator:
                 print(f"\nFatal session error: {e}")
                 traceback.print_exc()
             finally:
+                # Save auth state if login happened successfully this session
+                if not self._auth_state_loaded:
+                    await self._save_auth_state(context)
                 await browser.close()
 
         # Post-session: API testing phase

@@ -11,6 +11,7 @@ __pycache__/
 # Session artifacts (regenerated on each run)
 ux_traces/
 auth_state.json
+auth_states/
 qa_experience.json
 
 # Virtual environments

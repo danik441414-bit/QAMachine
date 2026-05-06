@@ -42,7 +42,7 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/signup"
-              className="h-8 px-4 rounded-lg bg-accent hover:bg-accent-hover text-white
+              className="inline-flex items-center h-8 px-4 rounded-lg bg-accent hover:bg-accent-hover text-white
                          text-sm font-medium transition-all shadow-glow-sm"
             >
               Get started
